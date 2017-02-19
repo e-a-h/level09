@@ -11,18 +11,17 @@ $levels = array(
 $directory = '';
 $hash = '';
 $class = '';
-$object = '';
+$instance = '';
 $counter = 0;
-$set = 0;
 
 /**
  * Loop through each level's DecorationMeshInstances to process, and manage state between files
  */
 function loopThroughLevels() {
-    global $levels, $directory, $counter, $set;
+    global $levels, $directory, $counter;
 
     foreach($levels as $level) {
-        $counter = $set = 0;
+        $counter = 0;
         $directory = "Level_$level";
 
         handleFile();
@@ -44,32 +43,32 @@ function handleFile() {
 }
 
 /**
- * Read the file and extract objects
+ * Read the file and extract instances
  *
  * @param $readfile
  */
 function processFile($readfile) {
     //throw away the first line
-    $line = bin2hex(fread($readfile, 16));
+    $line = fread($readfile, 16);
 
     while(!feof($readfile)) {
         $line = bin2hex(fread($readfile, 16));
-        extractObject($line);
+	    extractInstance($line);
     }
 }
 
 /**
- * Save the line to the global object. Also saves the hash and class for later use.
+ * Save the line to the global instance. Also saves the hash and class for later use.
  *
  * @param $line
  * @return int
  */
-function extractObject($line) {
-    global $counter, $object;
+function extractInstance($line) {
+    global $counter, $instance;
 
     extractHash($line);
     extractClass($line);
-    $object .= $line;
+    $instance .= $line;
 
     //we're at the end of the block
     if(($counter+1)%132 == 0)
@@ -103,18 +102,18 @@ function extractClass($line) {
 }
 
 /**
- * Write the object to a file
+ * Write the instance to a file
  */
 function writeFile() {
-    global $directory, $hash, $class, $object;
+    global $directory, $hash, $class, $instance;
 
-    $object = hex2bin($object);
-    $class = hex2str(trim($class, '0'));
+    $instance = hex2bin($instance);
+    $class = hex2str($class);
     $hash = hex2str($hash);
     $path = prepareOutput();
 
     echo "Extracting $directory/$class/$hash\n";
-    file_put_contents($path, $object);
+    file_put_contents($path, $instance);
     resetState();
 }
 
@@ -143,6 +142,10 @@ function prepareOutput() {
 function hex2str($hex) {
     $str = '';
 
+    //trim any empty 2-byte chunks off the right side
+    while(preg_match('/00$/', $hex))
+        $hex = substr($hex, 0, -2);
+
     //get 2-byte chunks, encode decimal, then get ascii
     for($i=0;$i<strlen($hex);$i+=2)
         $str .= chr(hexdec(substr($hex,$i,2)));
@@ -151,11 +154,10 @@ function hex2str($hex) {
 }
 
 function resetState() {
-    global $hash, $class, $object, $counter, $set;
+    global $hash, $class, $instance, $counter;
 
-    $hash = $class = $object = '';
+    $hash = $class = $instance = '';
     $counter = -1;
-    $set++;
 }
 
 
