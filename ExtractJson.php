@@ -15,16 +15,18 @@ $levels = array(
 // stores our current decoration mesh until we're ready to write to file
 $instance = array();
 // line counter, to know what data we're looking at, and when to write to file
-$counter = 0;
+$lineCount = 0;
+// count how many instances we've processed, used as index when rebuilding
+$instanceCount = 0;
 
 /**
  * Loop through each level's DecorationMeshInstances to process, and manage state between files
  */
 function loopThroughLevels() {
-	global $levels, $counter;
+	global $levels, $lineCount, $instanceCount;
 
 	foreach($levels as $level) {
-		$counter = 0;
+		$lineCount = $instanceCount = 0;
 		handleFile("Level_$level");
 	}
 }
@@ -63,35 +65,35 @@ function processFile($readfile, $directory) {
  * @return int
  */
 function extractObject($line, $directory) {
-	global $counter;
+	global $lineCount;
 
 	extractObjectData($line);
 
 	//we're at the end of the block
-	if(($counter+1)%132 == 0) {
+	if(($lineCount+1)%132 == 0) {
 		formatProperties();
 		writeFile($directory);
 	}
 
 
-	$counter++;
+	$lineCount++;
 }
 
 function extractObjectData($line) {
-	global $instance, $counter;
+	global $instance, $lineCount;
 
 	// these lines should be read as binary
-	if($counter == 1)
+	if($lineCount == 1)
 		$instance['meta1'] = translateFloatTuple($line);
-	if($counter == 2)
+	if($lineCount == 2)
 		$instance['meta2'] = translateFloatTuple($line);
-	if($counter == 3)
+	if($lineCount == 3)
 		$instance['meta3'] = translateFloatTuple($line);
-	if($counter == 4)
+	if($lineCount == 4)
 		$instance['position'] = translateFloatTuple($line);
-	if($counter == 5)
+	if($lineCount == 5)
 		$instance['data1'] = translateFloatTuple($line, true);
-	if($counter == 6) {
+	if($lineCount == 6) {
 		$instance['data2'] = translateFloatTuple($line);
 		$instance['flag'] = bin2hex(substr($line, 14, 4));
 	}
@@ -99,19 +101,19 @@ function extractObjectData($line) {
 	// these lines should be read as hex or ascii
 	$line = bin2hex($line);
 
-	if($counter == 0)
+	if($lineCount == 0)
 		$instance['header'] = substr($line, 0, 8);
-	if($counter == 7 || $counter == 8)
+	if($lineCount == 7 || $lineCount == 8)
 		$instance['hash'] .= extractValue($line);
-	if($counter == 11 || $counter == 12 || $counter == 13)
+	if($lineCount == 11 || $lineCount == 12 || $lineCount == 13)
 		$instance['class'] .= extractValue($line);
-	if($counter == 15 || $counter == 16)
+	if($lineCount == 15 || $lineCount == 16)
 		$instance['render'] .= extractValue($line);
 
 	//gather property list to parse later
-	if($counter > 18 && $counter < 131)
+	if($lineCount > 18 && $lineCount < 131)
 		$instance['properties'] .= $line . '|';
-	if($counter == 131)
+	if($lineCount == 131)
 		$instance['propertyCount'] .= substr($line, 4, 4);
 }
 
@@ -215,13 +217,13 @@ function writeFile($directory) {
  * @return string
  */
 function prepareOutput($directory) {
-	global $instance;
+	global $instance, $instanceCount;
 
-	$classSubdir = $directory . '/DecorationMeshInstances/' . $instance['class'];
+	$classSubdir = "$directory/DecorationMeshInstances/" . $instance['class'];
 	ensureDirectoryExists($classSubdir);
-	$path = realpath($classSubdir) . '/' . $instance['hash'] . '.json';
+	$path = realpath($classSubdir) . "/$instanceCount-" . $instance['hash'] . '.json';
 
-	echo 'Extracting to ' . $classSubdir . '/' . $instance['hash'] . ".json\r\n";
+	echo "Extracting to $classSubdir/$instanceCount-" . $instance['hash'] . ".json\r\n";
 	return $path;
 }
 
@@ -254,10 +256,11 @@ function hex2str($hex) {
 }
 
 function resetState() {
-	global $instance, $counter;
+	global $instance, $lineCount, $instanceCount;
 
 	$instance = array();
-	$counter = -1;
+	$lineCount = -1;
+	$instanceCount++;
 }
 
 
