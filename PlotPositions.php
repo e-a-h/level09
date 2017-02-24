@@ -1,4 +1,6 @@
 <?php
+require_once 'Helper.php';
+
 /* config variables */
 // which level do we search?
 $level = 'Barrens';
@@ -41,13 +43,6 @@ $color = 0;
 
 // line counter
 $counter = 0;
-
-function isLittleEndian()
-{
-  $testint = 0x00FF;
-  $p       = pack('S', $testint);
-  return $testint === current(unpack('v', $p));
-}
 
 /**
  * Scan the DecorationMeshInstances directory for the current level,
@@ -235,9 +230,9 @@ function translatePosition($line)
 
   // The order coordinates appear in the hex is y,z,x
   // Format to floats
-  $y = current(unpack('f', correctEndianness(substr($line, 0, 4))));
-  $z = current(unpack('f', correctEndianness(substr($line, 4, 4))));
-  $x = current(unpack('f', correctEndianness(substr($line, 8, 4))));
+  $y = current( unpack( 'f', Helper::correctEndianness( substr( $line, 0, 4 ) ) ) );
+  $z = current( unpack( 'f', Helper::correctEndianness( substr( $line, 4, 4 ) ) ) );
+  $x = current( unpack( 'f', Helper::correctEndianness( substr( $line, 8, 4 ) ) ) );
 
   setBounds($x, $y, $z);
 
@@ -282,18 +277,6 @@ function setBounds($x, $y, $z)
     $minz = $z;
   }
 
-}
-
-function correctEndianness($binary)
-{
-
-// Reverse byte order for little-endian machines
-  if (isLittleEndian())
-  {
-    return strrev($binary);
-  }
-
-  return $binary;
 }
 
 scanInstances();
