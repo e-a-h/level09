@@ -18,7 +18,7 @@ $maxz = -9999;
 
 // what class names do you want?
 // uses preg_match, so you can get partial matches
-$search_keys = array('.*');
+$search_keys = array( '.*' );
 
 // $search_keys = array('Rock', 'Flag', 'Tapestry');
 
@@ -56,27 +56,27 @@ function scanInstances()
   $classes   = getDirectoryContents("Level_$level/DecorationMeshInstances");
   $writefile = fopen("Level_$level/$descriptor-positions.txt", "w");
 
-  foreach ($search_keys as $key)
+  foreach( $search_keys as $key )
   {
 
-    foreach ($classes as $class)
+    foreach( $classes as $class )
     {
       $globalclass = $class;
-      processClass($key, $class, $writefile);
+      processClass( $key, $class, $writefile );
     }
 
   }
 
   // add north/south/east/west labels using point cloud bounds
-  $avx = ($minx + $maxx) / 2;
-  $avy = ($miny + $maxy) / 2;
-  $avz = ($minz + $maxz) / 2;
-  fwrite($writefile, "$maxx $avy 0 north 0\r\n");
-  fwrite($writefile, "$minx $avy 0 south 0\r\n");
-  fwrite($writefile, "$avx $miny 0 east 0\r\n");
-  fwrite($writefile, "$avx $maxy 0 west 0\r\n");
+  $avx = ( $minx + $maxx ) / 2;
+  $avy = ( $miny + $maxy ) / 2;
+  $avz = ( $minz + $maxz ) / 2;
+  fwrite( $writefile, "$maxx $avy 0 north 0\r\n" );
+  fwrite( $writefile, "$minx $avy 0 south 0\r\n" );
+  fwrite( $writefile, "$avx $miny 0 east 0\r\n" );
+  fwrite( $writefile, "$avx $maxy 0 west 0\r\n" );
 
-  fclose($writefile);
+  fclose( $writefile );
   /* After this, you can plot in gnuplot using:
 gnuplot> set xlabel "x axis"; set ylabel "y axis"; set zlabel "z axis"; set view equal xyz
 gnuplot> splot 'Level_Barrens/rock-flag-positions.txt' u 1:2:3:4:5 w labels tc palette offset 0,-1 point palette
@@ -90,9 +90,9 @@ gnuplot> splot 'Level_Barrens/rock-flag-positions.txt' u 1:2:3:4:5 w labels tc p
  */
 function getDirectoryContents($directory)
 {
-  $contents = scandir($directory);
-  array_shift($contents); // skip .
-  array_shift($contents); // skip ..
+  $contents = scandir( $directory );
+  array_shift( $contents ); // skip .
+  array_shift( $contents ); // skip ..
 
   return $contents;
 }
@@ -108,12 +108,12 @@ function processClass($key, $class, $writefile)
 {
   global $level, $color;
 
-  if (preg_match("/$key/", $class))
+  if( preg_match( "/$key/", $class ) )
   {
     $directory = "Level_$level/DecorationMeshInstances/$class";
     $color     = ++$color;
     // setColor($class);
-    processFiles($directory, $writefile);
+    processFiles( $directory, $writefile );
     print "Added $class to output\n";
   }
 
@@ -149,12 +149,11 @@ function processFiles($directory, $writefile)
 {
   $files = getDirectoryContents($directory);
 
-  foreach ($files as $file)
+  foreach( $files as $file )
   {
-    if(!stristr($file, '.'))
-      handleFile($directory, $writefile, $file);
+    if( !stristr( $file, '.' ) )
+    { handleFile( $directory, $writefile, $file ); }
   }
-
 }
 
 /**
@@ -164,18 +163,16 @@ function processFiles($directory, $writefile)
  * @param $writefile
  * @param $file
  */
-function handleFile($directory, $writefile, $file)
+function handleFile( $directory, $writefile, $file )
 {
   global $counter;
 
   $counter  = 0;
   $readfile = fopen("$directory/$file", "rb");
 
-// print "$directory/$file\n";
+  // print "$directory/$file\n";
   if ($readfile && $writefile)
-  {
-    processFile($readfile, $writefile);
-  }
+  { processFile($readfile, $writefile); }
 
   fclose($readfile);
 }
@@ -190,7 +187,7 @@ function processFile($readfile, $writefile)
 {
   global $counter;
 
-  while ( ! feof($readfile))
+  while ( ! feof( $readfile ) )
   {
     $binline = fread($readfile, 16);
     extractPosition($writefile, $binline);
@@ -206,15 +203,11 @@ function processFile($readfile, $writefile)
  * @param $line
  * @return int
  */
-function extractPosition($writefile, $line)
+function extractPosition( $writefile, $line )
 {
   global $counter;
-
   if ($counter == 4)
-  {
-    fwrite($writefile, translatePosition($line));
-  }
-
+  { fwrite( $writefile, translatePosition( $line ) ); }
 }
 
 /**
@@ -224,59 +217,46 @@ function extractPosition($writefile, $line)
  * @param $color
  * @return string
  */
-function translatePosition($line)
+function translatePosition( $line )
 {
   global $color, $globalclass;
 
   // The order coordinates appear in the hex is y,z,x
   // Format to floats
-  $y = current( unpack( 'f', Helper::correctEndianness( substr( $line, 0, 4 ) ) ) );
-  $z = current( unpack( 'f', Helper::correctEndianness( substr( $line, 4, 4 ) ) ) );
-  $x = current( unpack( 'f', Helper::correctEndianness( substr( $line, 8, 4 ) ) ) );
+  $y = Helper::unpackFloat( substr( $line, 0, 4 ) ) );
+  $z = Helper::unpackFloat( substr( $line, 4, 4 ) ) );
+  $x = Helper::unpackFloat( substr( $line, 8, 4 ) ) );
 
-  setBounds($x, $y, $z);
+  setBounds( $x, $y, $z );
 
   // output the coords and color index;
-  $Label = preg_replace('/P_/', '', $globalclass);
-  $Label = preg_replace('/C_/', '', $Label);
-  $Label = preg_replace('/_/', '-', $Label);
+  $Label = preg_replace( '/P_/', '', $globalclass );
+  $Label = preg_replace( '/C_/', '', $Label );
+  $Label = preg_replace( '/_/', '-', $Label );
   return "$x $y $z \"$Label\" $color\r\n";
 }
 
-function setBounds($x, $y, $z)
+function setBounds( $x, $y, $z )
 {
   global $minx, $miny, $minz, $maxx, $maxy, $maxz;
 
-  if ($x > $maxx)
-  {
-    $maxx = $x;
-  }
+  if( $x > $maxx )
+  { $maxx = $x; }
 
-  if ($y > $maxy)
-  {
-    $maxy = $y;
-  }
+  if( $y > $maxy )
+  { $maxy = $y; }
 
-  if ($z > $maxz)
-  {
-    $maxz = $z;
-  }
+  if( $z > $maxz )
+  { $maxz = $z; }
 
-  if ($x < $minx)
-  {
-    $minx = $x;
-  }
+  if( $x < $minx )
+  { $minx = $x; }
 
-  if ($y < $miny)
-  {
-    $miny = $y;
-  }
+  if( $y < $miny )
+  { $miny = $y; }
 
-  if ($z < $minz)
-  {
-    $minz = $z;
-  }
-
+  if( $z < $minz )
+  { $minz = $z; }
 }
 
 scanInstances();
