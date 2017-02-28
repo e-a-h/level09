@@ -37,6 +37,11 @@ class Helper
     return $vector;
   }
 
+  public static function unpackStringOfFloats( $bin, $Separator = " " )
+  {
+    return join( $Separator, self::unpackFloatVector( $bin ) );
+  }
+
   ///  \brief Take binary string with length 3 as input
   ///  and return array of char.
   public static function unpackCharArray( $bin )
@@ -103,5 +108,42 @@ class Helper
     { return null; }
     return current( unpack( 'C', $bin ) );
   }
+
+  /**
+   * Translate hex code into ascii
+   * @param $hex
+   * @return string
+   */
+  public static function hex2str( $hex )
+  {
+    $str = '';
+
+    //trim any empty 2-byte chunks off the right side
+    while( preg_match( '/00$/', $hex ) )
+    { $hex = substr( $hex, 0, -2 ); }
+
+    //get 2-byte chunks, encode decimal, then get ascii
+    for( $i=0; $i < strlen( $hex ); $i += 2 )
+    { $str .= chr( hexdec( substr( $hex, $i, 2 ) ) ); }
+
+    return $str;
+  }
+
+  /**
+ * @param $directory (String) Directory name
+ */
+  function validateDirectory( $directory )
+  {
+    if( $path = realpath( $directory ) )
+    { return $path; }
+    else
+    {
+      $path = realpath( "./" ) . '/' . $directory;
+      if( mkdir( $path, 0777, true ) )
+      { return realpath( $path ); }
+    }
+    return false;
+  }
+
 
 }

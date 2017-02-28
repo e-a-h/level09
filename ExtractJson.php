@@ -1,4 +1,6 @@
 <?php
+require_once 'Helper.php';
+
 // this could take a while...
 ini_set("memory_limit", "-1");
 set_time_limit(0);
@@ -22,25 +24,28 @@ $instanceCount = 0;
 /**
  * Loop through each level's DecorationMeshInstances to process, and manage state between files
  */
-function loopThroughLevels() {
+function loopThroughLevels()
+{
 	global $levels, $lineCount, $instanceCount;
 
-	foreach($levels as $level) {
+	foreach( $levels as $level )
+	{
 		$lineCount = $instanceCount = 0;
-		handleFile("Level_$level");
+		handleFile( "Level_$level" );
 	}
 }
 
 /**
  * Open the level's DecorationMeshInstances file and process it
  */
-function handleFile($directory) {
-	$readfile = fopen("$directory/DecorationMeshInstances.lua.bin", "r");
+function handleFile( $directory )
+{
+	$readfile = fopen( "$directory/DecorationMeshInstances.lua.bin", "r" );
 
-	if($readfile)
-		processFile($readfile, $directory);
+	if( $readfile )
+	{ processFile( $readfile, $directory ); }
 
-	fclose($readfile);
+	fclose( $readfile );
 }
 
 /**
@@ -48,13 +53,15 @@ function handleFile($directory) {
  *
  * @param $readfile
  */
-function processFile($readfile, $directory) {
+function processFile( $readfile, $directory )
+{
 	//throw away the first line
-	$line = fread($readfile, 16);
+	$line = fread( $readfile, 16 );
 
-	while(!feof($readfile)) {
-		$line = fread($readfile, 16);
-		extractObject($line, $directory);
+	while( ! feof( $readfile ) )
+	{
+		$line = fread( $readfile, 16 );
+		extractObject( $line, $directory );
 	}
 }
 
@@ -64,57 +71,97 @@ function processFile($readfile, $directory) {
  * @param $line
  * @return int
  */
-function extractObject($line, $directory) {
+function extractObject( $line, $directory )
+{
 	global $lineCount;
 
-	extractObjectData($line);
+	extractObjectData( $line );
 
 	//we're at the end of the block
-	if(($lineCount+1)%132 == 0) {
+	if( ( $lineCount + 1 ) % 132 == 0 )
+	{
 		formatProperties();
-		writeFile($directory);
+		writeFile( $directory );
 	}
 
 
 	$lineCount++;
 }
 
-function extractObjectData($line) {
+function extractObjectData( $line )
+{
 	global $instance, $lineCount;
 
-	// these lines should be read as binary
-	if($lineCount == 1)
-		$instance['meta1'] = translateFloatTuple($line);
-	if($lineCount == 2)
-		$instance['meta2'] = translateFloatTuple($line);
-	if($lineCount == 3)
-		$instance['meta3'] = translateFloatTuple($line);
-	if($lineCount == 4)
-		$instance['position'] = translateFloatTuple($line);
-	if($lineCount == 5)
-		$instance['data1'] = translateFloatTuple($line, true);
-	if($lineCount == 6) {
-		$instance['data2'] = translateFloatTuple($line);
-		$instance['flag'] = bin2hex(substr($line, 14, 4));
+	// these lines should be decoded to hex
+	if( ( $lineCount == 0 ) || ( $lineCount >= 7 ) )
+	{ $line = bin2hex( $line ); }
+
+	switch( $lineCount )
+	{
+		case 0:
+			$instance['header'] = substr( $line, 0, 8 );
+			break;
+		case 1:
+			$instance[ 'meta1' ] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
+			break;
+		case 2:
+		  $instance[ 'meta2' ] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
+			break;
+		case 3:
+			$instance[ 'meta3' ] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) ); 
+			break;
+		case 4:
+			$instance[ 'position' ] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) ); 
+			break;
+		case 5:
+			$instance[ 'data1' ] = Helper::unpackStringOfFloats( $line );
+			break;
+		case 6:
+			$instance['data2'] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
+			$instance['flag'] = bin2hex( substr( $line, 14, 4 ) );
+			break;
+		case 7:
+			// initialize
+			$instance['hash'] = extractValue( $line );
+			break;
+		case 8:
+			$instance['hash'] .= extractValue( $line );
+			break;
+		case 9:
+			break;
+		case 10:
+			break;
+		case 11:
+			// initialize
+			$instance['class'] = extractValue( $line );
+			break;
+		case 12:
+		case 13:
+			$instance['class'] .= extractValue( $line );
+			break;
+		case 14:
+			break;
+		case 15:
+			// initialize
+			$instance['render'] = extractValue( $line );
+			break;
+		case 16:
+			$instance['render'] .= extractValue( $line );
+			break;
+		case 18:
+			// initialize
+			$instance['properties'] = '';
+			break;
+		case 131:
+			$instance['propertyCount'] = substr( $line, 4, 4 );
+			break;
+		default:
+			break;
 	}
 
-	// these lines should be read as hex or ascii
-	$line = bin2hex($line);
-
-	if($lineCount == 0)
-		$instance['header'] = substr($line, 0, 8);
-	if($lineCount == 7 || $lineCount == 8)
-		$instance['hash'] .= extractValue($line);
-	if($lineCount == 11 || $lineCount == 12 || $lineCount == 13)
-		$instance['class'] .= extractValue($line);
-	if($lineCount == 15 || $lineCount == 16)
-		$instance['render'] .= extractValue($line);
-
 	//gather property list to parse later
-	if($lineCount > 18 && $lineCount < 131)
-		$instance['properties'] .= $line . '|';
-	if($lineCount == 131)
-		$instance['propertyCount'] .= substr($line, 4, 4);
+	if( $lineCount > 18 && $lineCount < 131 )
+	{ $instance['properties'] .= $line . '|'; }
 }
 
 /**
@@ -125,54 +172,27 @@ function extractObjectData($line) {
  * @param bool $avoidAscii
  * @return string
  */
-function extractValue($line, $avoidAscii = false) {
-	if(!$avoidAscii && mb_check_encoding(hex2str($line), 'ASCII'))
-		return hex2str($line);
+function extractValue( $line, $avoidAscii = false )
+{
+	if( ( ! $avoidAscii ) &&
+	    mb_check_encoding( Helper::hex2str( $line ), 'ASCII' ) )
+	{ return Helper::hex2str( $line ); }
 
-	$line = hex2bin($line);
-	$includeLast = substr($line, 12, 4) ? true : false;
+	$line = hex2bin( $line );
+	$line = substr( $line, 12, 4 ) ? $line : substr( $line, 0, 12 );
 
-	return translateFloatTuple($line, $includeLast);
+	return Helper::unpackStringOfFloats( $line );
 }
 
-function translateFloatTuple($line, $includeLast = false) {
-	$x = bin2float(substr($line, 0, 4));
-	$y = bin2float(substr($line, 4, 4));
-	$z = bin2float(substr($line, 8, 4));
-
-	if($includeLast)
-		$a = bin2float(substr($line, 12, 4));
-
-	// output the float values
-	return "$x $y $z" . ($includeLast ? " $a" : "");
-}
-
-function bin2float($binary) {
-	return current( unpack( 'f', correctEndianness( $binary ) ) );
-}
-
-function correctEndianness($binary) {
-	if(isLittleEndian())
-		return strrev( $binary );
-
-	return $binary;
-}
-
-function isLittleEndian() {
-	$testint = 0x00FF;
-	$p = pack('S', $testint);
-
-	return $testint === current(unpack('v', $p));
-}
-
-function formatProperties() {
+function formatProperties()
+{
 	global $instance;
 
-	$propArray = explode('|', rtrim($instance['properties'], '|'));
-	$instance['properties'] = array();
+	$propArray = explode( '|', rtrim( $instance[ 'properties' ], '|' ) );
+	$instance[ 'properties' ] = array();
 
-	for($i=0;$i<16;$i++)
-		formatProperty($i, $propArray);
+	for( $i = 0; $i < 16; $i++ )
+	{ formatProperty($i, $propArray); }
 }
 
 /**
@@ -181,18 +201,20 @@ function formatProperties() {
  * @param $asdf
  * @return mixed
  */
-function formatProperty($i, $propArray) {
+function formatProperty( $i, $propArray )
+{
 	global $instance;
 
 	$base = $i * 7;
-	$propertyName = extractValue($propArray[$base+5]);
+	$propertyName = extractValue( $propArray[ $base + 5 ] );
 
-	if($propertyName) {
-		$propertyData = extractValue(substr($propArray[$base], 0, 24), true);
-		$propertyTexture = extractValue($propArray[$base + 1] . $propArray[$base + 2]);
-		$propertyFlag = substr($propArray[$base + 6], 4, 4);
+	if($propertyName)
+	{
+		$propertyData = extractValue( substr( $propArray[ $base ], 0, 24 ), true );
+		$propertyTexture = extractValue( $propArray[ $base + 1 ] . $propArray[ $base + 2 ] );
+		$propertyFlag = substr( $propArray[ $base + 6 ], 4, 4);
 
-		$instance['properties'][$propertyName] = array(
+		$instance[ 'properties' ][ $propertyName ] = array(
 		  'flag' => $propertyFlag,
 		  'data'  => $propertyData,
 		  'texture' => $propertyTexture
@@ -203,11 +225,12 @@ function formatProperty($i, $propArray) {
 /**
  * Write the object to a file
  */
-function writeFile($directory) {
+function writeFile( $directory )
+{
 	global $instance;
 
-	$path = prepareOutput($directory);
-	file_put_contents($path, json_encode($instance));
+	$path = prepareOutput( $directory );
+	file_put_contents( $path, json_encode( $instance ) );
 	resetState();
 }
 
@@ -216,53 +239,28 @@ function writeFile($directory) {
  * We also
  * @return string
  */
-function prepareOutput($directory) {
-	global $instance, $instanceCount;
-
-	$classSubdir = "$directory/DecorationMeshInstances/" . $instance['class'];
-	ensureDirectoryExists($classSubdir);
-	$path = realpath($classSubdir) . "/$instanceCount-" . $instance['hash'] . '.json';
-
-	echo "Extracting to $classSubdir/$instanceCount-" . $instance['hash'] . ".json\r\n";
-	return $path;
-}
-
-/**
- * @param $classSubdir
- */
-function ensureDirectoryExists($directory)
+function prepareOutput( $directory )
 {
-	if(!realpath($directory))
-		mkdir(realpath("./") . '/' . $directory, 0777, TRUE);
+  global $instance, $instanceCount;
+
+  $classSubdir = "$directory/DecorationMeshInstances/" . $instance['class'];
+  if( $basepath = Helper::validateDirectory( $classSubdir ) )
+  {
+	  $path = "$basepath/$instanceCount-" . $instance['hash'] . '.json';
+	  echo "Extracting to $classSubdir/$instanceCount-" . $instance['hash'] . ".json\r\n";
+	  return $path;
+	}
+  echo "Failed to construct path from $directory";
+	exit();
 }
 
-/**
- * Translate hex code into ascii
- * @param $hex
- * @return string
- */
-function hex2str($hex) {
-	$str = '';
-
-	//trim any empty 2-byte chunks off the right side
-	while(preg_match('/00$/', $hex))
-		$hex = substr($hex, 0, -2);
-
-	//get 2-byte chunks, encode decimal, then get ascii
-	for($i=0;$i<strlen($hex);$i+=2)
-		$str .= chr(hexdec(substr($hex,$i,2)));
-
-	return $str;
-}
-
-function resetState() {
+function resetState()
+{
 	global $instance, $lineCount, $instanceCount;
 
 	$instance = array();
 	$lineCount = -1;
 	$instanceCount++;
 }
-
-
 
 loopThroughLevels();
