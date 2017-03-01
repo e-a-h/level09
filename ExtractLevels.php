@@ -4,9 +4,9 @@ require_once 'Helper.php';
 // config variables
 // what levels will we extract?
 $levels = array(
-  'Barrens', 'Bryan', 'Canyon', 'Cave',
-  'Chris', 'Credits', 'Desert', 'Graveyard',
-  'Matt', 'Mountain', 'Ruins', 'Summit'
+	'Barrens', 'Bryan', 'Canyon', 'Cave',
+	'Chris', 'Credits', 'Desert', 'Graveyard',
+	'Matt', 'Mountain', 'Ruins', 'Summit'
 );
 
 // state variables
@@ -21,15 +21,15 @@ $counter = 0;
  */
 function loopThroughLevels()
 {
-  global $levels, $directory, $counter;
+	global $levels, $directory, $counter;
 
-  foreach( $levels as $level )
-  {
-    $counter = 0;
-    $directory = "Level_$level";
+	foreach( $levels as $level )
+	{
+		$counter = 0;
+		$directory = "Level_$level";
 
-    handleFile();
-  }
+		handleFile();
+	}
 }
 
 /**
@@ -37,14 +37,14 @@ function loopThroughLevels()
  */
 function handleFile()
 {
-  global $directory;
+	global $directory;
 
-  $readfile = fopen("$directory/DecorationMeshInstances.lua.bin", "r");
+	$readfile = fopen("$directory/DecorationMeshInstances.lua.bin", "r");
 
-  if( $readfile )
-  { processFile( $readfile ); }
+	if( $readfile )
+	{ processFile( $readfile ); }
 
-  fclose( $readfile );
+	fclose( $readfile );
 }
 
 /**
@@ -54,14 +54,14 @@ function handleFile()
  */
 function processFile( $readfile )
 {
-  //throw away the first line
-  $line = fread( $readfile, 16 );
+	//throw away the first line
+	$line = fread( $readfile, 16 );
 
-  while( ! feof( $readfile ) )
-  {
-    $line = bin2hex( fread( $readfile, 16 ) );
-    extractInstance( $line );
-  }
+	while( ! feof( $readfile ) )
+	{
+		$line = bin2hex( fread( $readfile, 16 ) );
+		extractInstance( $line );
+	}
 }
 
 /**
@@ -72,17 +72,17 @@ function processFile( $readfile )
  */
 function extractInstance( $line )
 {
-  global $counter, $instance;
+	global $counter, $instance;
 
-  extractHash( $line );
-  extractClass( $line );
-  $instance .= $line;
+	extractHash( $line );
+	extractClass( $line );
+	$instance .= $line;
 
-  //we're at the end of the block
-  if( ( ( $counter + 1 ) % 132 ) == 0 )
-  { writeFile(); }
+	//we're at the end of the block
+	if( ( ( $counter + 1 ) % 132 ) == 0 )
+	{ writeFile(); }
 
-  $counter++;
+	$counter++;
 }
 
 /**
@@ -92,10 +92,10 @@ function extractInstance( $line )
  */
 function extractHash( $line )
 {
-  global $counter, $hash;
+	global $counter, $hash;
 
-  if( ( $counter == 7 ) || ( $counter == 8 ) )
-  { $hash .= $line; }
+	if( ( $counter == 7 ) || ( $counter == 8 ) )
+	{ $hash .= $line; }
 }
 
 /**
@@ -105,10 +105,10 @@ function extractHash( $line )
  */
 function extractClass( $line )
 {
-  global $counter, $class;
+	global $counter, $class;
 
-  if( ( $counter == 11 ) || ( $counter == 12 ) )
-  { $class .= $line; }
+	if( ( $counter == 11 ) || ( $counter == 12 ) )
+	{ $class .= $line; }
 }
 
 /**
@@ -116,16 +116,16 @@ function extractClass( $line )
  */
 function writeFile()
 {
-  global $directory, $hash, $class, $instance;
+	global $directory, $hash, $class, $instance;
 
-  $instance = hex2bin( $instance );
-  $class = Helper::hex2str( $class );
-  $hash = Helper::hex2str( $hash );
-  $path = prepareOutput();
+	$instance = hex2bin( $instance );
+	$class = Helper::hex2str( $class );
+	$hash = Helper::hex2str( $hash );
+	$path = prepareOutput();
 
-  echo "Extracting $directory/$class/$hash\n";
-  file_put_contents( $path, $instance );
-  resetState();
+	echo "Extracting $directory/$class/$hash\n";
+	file_put_contents( $path, $instance );
+	resetState();
 }
 
 /**
@@ -135,22 +135,22 @@ function writeFile()
  */
 function prepareOutput()
 {
-  global $hash, $class, $directory;
+	global $hash, $class, $directory;
 
-  $classSubdir = "$directory/DecorationMeshInstances/$class";
-  if( $basepath = Helper::validateDirectory( $classSubdir ) )
-  { return "$basepath/$hash"; }
+	$classSubdir = "$directory/DecorationMeshInstances/$class";
+	if( $basepath = Helper::validateDirectory( $classSubdir ) )
+	{ return "$basepath/$hash"; }
 
-  echo "Failed to construct path from $directory";
-  exit();
+	echo "Failed to construct path from $directory";
+	exit();
 }
 
 function resetState()
 {
-  global $hash, $class, $instance, $counter;
+	global $hash, $class, $instance, $counter;
 
-  $hash = $class = $instance = '';
-  $counter = -1;
+	$hash = $class = $instance = '';
+	$counter = -1;
 }
 
 loopThroughLevels();

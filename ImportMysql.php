@@ -8,18 +8,18 @@ set_time_limit(0);
 /*      config variables        */
 // what levels will we extract?
 $levels = array(
-  'Barrens',
-  'Bryan',
-  'Canyon',
-  'Cave',
-  'Chris',
-  'Credits',
-  'Desert',
-  'Graveyard',
-  'Matt',
-  'Mountain',
-  'Ruins',
-  'Summit',
+	'Barrens',
+	'Bryan',
+	'Canyon',
+	'Cave',
+	'Chris',
+	'Credits',
+	'Desert',
+	'Graveyard',
+	'Matt',
+	'Mountain',
+	'Ruins',
+	'Summit',
 );
 
 $instance_buffer = array();
@@ -37,28 +37,28 @@ $db = null;
  */
 function openDatabase()
 {
-  global $db;
-  $db = dbHandler::connectByHost();
-  // $db = dbHandler::connectBySocket();
+	global $db;
+	$db = dbHandler::connectByHost();
+	// $db = dbHandler::connectBySocket();
 	initAutoIncrement();
 }
 
 function initAutoIncrement()
 {
-  global $db, $instanceId;
+	global $db, $instanceId;
 
 	$sql = "SELECT `AUTO_INCREMENT` "
 	     . "FROM INFORMATION_SCHEMA.TABLES "
 	     . "WHERE TABLE_SCHEMA = 'journey_meshes' "
 	     . "AND TABLE_NAME = 'mesh_instances';";
-  $query = $db->prepare( $sql );
-  $query->execute();
-  $result = $query->fetch();
+	$query = $db->prepare( $sql );
+	$query->execute();
+	$result = $query->fetch();
 
-  if( $result !== false )
+	if( $result !== false )
 	{ $instanceId = intval( $result[0] ); }
 	else
-  { exit( "Failed to find auto_increment value\n" ); }
+	{ exit( "Failed to find auto_increment value\n" ); }
 }
 
 /**
@@ -66,14 +66,14 @@ function initAutoIncrement()
  */
 function loopThroughLevels()
 {
-  global $levels, $levelIndex;
+	global $levels, $levelIndex;
 
-  foreach( $levels as $level )
-  {
-    $levelIndex++;
-    $directory = "Level_$level/DecorationMeshInstances";
-    loopThroughClasses( $directory );
-  }
+	foreach( $levels as $level )
+	{
+		$levelIndex++;
+		$directory = "Level_$level/DecorationMeshInstances";
+		loopThroughClasses( $directory );
+	}
 }
 
 /**
@@ -83,13 +83,13 @@ function loopThroughLevels()
  */
 function loopThroughClasses( $directory )
 {
-  $classes = getDirectoryContents( $directory );
+	$classes = getDirectoryContents( $directory );
 
-  foreach( $classes as $class )
-  {
-    print "Importing $directory/$class\n";
-    processClass( "$directory/$class" );
-  }
+	foreach( $classes as $class )
+	{
+		print "Importing $directory/$class\n";
+		processClass( "$directory/$class" );
+	}
 
 }
 
@@ -100,14 +100,14 @@ function loopThroughClasses( $directory )
  */
 function processClass( $directory )
 {
-  $instances = getDirectoryContents( $directory );
-  foreach( $instances as $file )
-  {
-    if ( stristr( $file, '.json' ) )
-    {
-      processInstance( "$directory/$file" );
-    }
-  }
+	$instances = getDirectoryContents( $directory );
+	foreach( $instances as $file )
+	{
+		if ( stristr( $file, '.json' ) )
+		{
+			processInstance( "$directory/$file" );
+		}
+	}
 }
 
 /**
@@ -118,11 +118,11 @@ function processClass( $directory )
  */
 function getDirectoryContents( $directory )
 {
-  $contents = scandir( $directory );
-  array_shift( $contents ); // skip .
-  array_shift( $contents ); // skip ..
+	$contents = scandir( $directory );
+	array_shift( $contents ); // skip .
+	array_shift( $contents ); // skip ..
 
-  return $contents;
+	return $contents;
 }
 
 /**
@@ -134,22 +134,22 @@ function processInstance( $filepath )
 {
 	global $instanceId, $instance_buffer;
 
-  // Process 500 at a time to speed up queries
-  if( count( $instance_buffer ) == 50 )
-  { executeBuffer(); }
+	// Process 500 at a time to speed up queries
+	if( count( $instance_buffer ) == 50 )
+	{ executeBuffer(); }
 
 
-  $instance = json_decode( file_get_contents( $filepath ) );
+	$instance = json_decode( file_get_contents( $filepath ) );
 
-  if ( ! $instance || empty( $instance ))
-  {
-    var_dump( $filepath );
-    exit( "failed to decode json!\n" );
-  }
+	if ( ! $instance || empty( $instance ))
+	{
+		var_dump( $filepath );
+		exit( "failed to decode json!\n" );
+	}
 
-  importInstance( $instance );
-  importInstanceProperties( $instance->properties );
-  $instanceId++;
+	importInstance( $instance );
+	importInstanceProperties( $instance->properties );
+	$instanceId++;
 }
 
 /**
@@ -159,15 +159,15 @@ function processInstance( $filepath )
  */
 function importInstance( $instance )
 {
-  global $db, $levelIndex, $instance_buffer, $property_buffer;
+	global $db, $levelIndex, $instance_buffer, $property_buffer;
 
-  $position   = explode( ' ', $instance->position );
-  $position_x = $position[0];
-  $position_y = $position[1];
-  $position_z = $position[2];
+	$position   = explode( ' ', $instance->position );
+	$position_x = $position[0];
+	$position_y = $position[1];
+	$position_z = $position[2];
 
-  // include quotes where appropriate for sql statement
-  $values = array(
+	// include quotes where appropriate for sql statement
+	$values = array(
 		"'$instance->class'",
 		"'$instance->hash'",
 		"'$levelIndex'",
@@ -183,31 +183,31 @@ function importInstance( $instance )
 		"'$instance->flag'",
 		"'$instance->render'",
 		"'$instance->propertyCount'",
-  );
-  // push to buffer
-  $valuestring = implode( ', ', $values );
-  $instance_buffer[] = "( $valuestring )";
+	);
+	// push to buffer
+	$valuestring = implode( ', ', $values );
+	$instance_buffer[] = "( $valuestring )";
 }
 
 function insertInstances()
 {
-  global $db, $instance_buffer;
+	global $db, $instance_buffer;
 	print "Instering isntances into db\n";
 
 	$values = implode( ', ', $instance_buffer );
-  $sql = "INSERT INTO mesh_instances (class, hash, level_id, header, "
-    . "meta1, meta2, meta3, position_x, position_y, position_z, "
-    . "data1, data2, flag, render, property_count) "
-    . "VALUES $values;";
+	$sql = "INSERT INTO mesh_instances (class, hash, level_id, header, "
+		. "meta1, meta2, meta3, position_x, position_y, position_z, "
+		. "data1, data2, flag, render, property_count) "
+		. "VALUES $values;";
 
-  $success = $db->exec( $sql );
+	$success = $db->exec( $sql );
 
-  if ( ! $success )
-  {
-    var_dump( $sql );
-    var_dump( $success );
-    exit( "failed to add mesh_instance!\n" );
-  }
+	if ( ! $success )
+	{
+		var_dump( $sql );
+		var_dump( $success );
+		exit( "failed to add mesh_instance!\n" );
+	}
 }
 
 /**
@@ -217,16 +217,16 @@ function insertInstances()
  */
 function importInstanceProperties( $properties )
 {
-  $properties = json_decode( json_encode( $properties ), true );
+	$properties = json_decode( json_encode( $properties ), true );
 	//convert to an array for easier traversal
 
-  if( is_array( $properties ) )
-  {
-    foreach( $properties as $key => $data )
-    {
-      importInstanceProperty( $key, $data );
-    }
-  }
+	if( is_array( $properties ) )
+	{
+		foreach( $properties as $key => $data )
+		{
+			importInstanceProperty( $key, $data );
+		}
+	}
 
 }
 
@@ -239,41 +239,41 @@ function importInstanceProperties( $properties )
  */
 function importInstanceProperty( $key, $data )
 {
-  global $levelIndex, $property_buffer, $instanceId;
+	global $levelIndex, $property_buffer, $instanceId;
 
-  $data = json_decode( json_encode( $data ) ); // convert to an object for syntactic sugar
-  // include quotes. these are for sql insert
-  $values = array(
-  	"'$instanceId'",
-  	"'$levelIndex'",
-  	"'$key'",
-    "'$data->flag'",
-    "'$data->data'",
-    "'$data->texture'",
-  );
-  // push to buffer
-  $valuestring = implode( ', ', $values );
-  $property_buffer[] = "( $valuestring )";
+	$data = json_decode( json_encode( $data ) ); // convert to an object for syntactic sugar
+	// include quotes. these are for sql insert
+	$values = array(
+		"'$instanceId'",
+		"'$levelIndex'",
+		"'$key'",
+		"'$data->flag'",
+		"'$data->data'",
+		"'$data->texture'",
+	);
+	// push to buffer
+	$valuestring = implode( ', ', $values );
+	$property_buffer[] = "( $valuestring )";
 }
 
 function insertProperties()
 {
-  global $db, $property_buffer;
+	global $db, $property_buffer;
 	print "Instering instance properties into db\n";
 
 	$values = implode( ', ', $property_buffer );
-  $sql  = "INSERT INTO mesh_instance_properties (instance_id, level_id, "
-    . "prop_name, prop_flag, prop_data, prop_texture) "
-    . "VALUES $values;";
+	$sql  = "INSERT INTO mesh_instance_properties (instance_id, level_id, "
+	  . "prop_name, prop_flag, prop_data, prop_texture) "
+	  . "VALUES $values;";
 
-  $success = $db->exec( $sql );
+	$success = $db->exec( $sql );
 
-  if ( ! $success )
-  {
-    var_dump( $sql );
-    var_dump( $success );
-    exit( "ERROR!\n" );
-  }
+	if ( ! $success )
+	{
+		var_dump( $sql );
+		var_dump( $success );
+		exit( "ERROR!\n" );
+	}
 }
 
 function executeBuffer()
