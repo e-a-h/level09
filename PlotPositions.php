@@ -1,9 +1,15 @@
 <?php
 require_once 'Helper.php';
 
+// options
+// Example to export maya locator script:
+// php PlotPositions.php -m
+$options = getopt( "m" );
+$exportMEL = isset( $options['m'] );
+
 /* config variables */
 // which level do we search?
-$level = 'Barrens';
+$level = 'Bryan';
 $globalclass;
 
 // unique descriptor for your output file name
@@ -50,31 +56,30 @@ $counter = 0;
  */
 function scanInstances()
 {
-	global $level, $search_keys, $descriptor, $globalclass;
+	global $level, $search_keys, $descriptor, $globalclass, $exportMEL;
 	global $minx, $miny, $minz, $maxx, $maxy, $maxz;
 
-	$classes   = getDirectoryContents("Level_$level/DecorationMeshInstances");
-	$writefile = fopen("Level_$level/$descriptor-positions.txt", "w");
+	$classes = getDirectoryContents("Level_$level/DecorationMeshInstances");
+	$Ext = $exportMEL ? 'mel' : 'txt';
+	$writefile = fopen("Level_$level/$descriptor-positions.$Ext", "w");
 
 	foreach( $search_keys as $key )
 	{
-
 		foreach( $classes as $class )
 		{
 			$globalclass = $class;
 			processClass( $key, $class, $writefile );
 		}
-
 	}
 
 	// add north/south/east/west labels using point cloud bounds
 	$avx = ( $minx + $maxx ) / 2;
 	$avy = ( $miny + $maxy ) / 2;
 	$avz = ( $minz + $maxz ) / 2;
-	fwrite( $writefile, "$maxx $avy 0 north 0\r\n" );
-	fwrite( $writefile, "$minx $avy 0 south 0\r\n" );
-	fwrite( $writefile, "$avx $miny 0 east 0\r\n" );
-	fwrite( $writefile, "$avx $maxy 0 west 0\r\n" );
+	writePosition( $writefile, $maxx, $avy, 0, "north", 0 );
+	writePosition( $writefile, $minx, $avy, 0, "south", 0 );
+	writePosition( $writefile, $avx, $miny, 0, "east", 0 );
+	writePosition( $writefile, $avx, $maxy, 0, "west", 0 );
 
 	fclose( $writefile );
 	/* After this, you can plot in gnuplot using:
@@ -82,6 +87,22 @@ gnuplot> set xlabel "x axis"; set ylabel "y axis"; set zlabel "z axis"; set view
 gnuplot> splot 'Level_Barrens/rock-flag-positions.txt' u 1:2:3:4:5 w labels tc palette offset 0,-1 point palette
  */
 }
+
+// output a line to the output file
+function writePosition( $handle, $x, $y, $z, $label="", $index=0 )
+{
+	global $exportMEL;
+	if( $exportMEL )
+	{
+		fwrite( $handle, "spaceLocator -p $x $y $z" );
+		if( ! empty( $label ) )
+		{ fwrite( $handle, " -n \"$label\";" ); }
+		fwrite( $handle, "\r\n" );
+	}
+	else
+	{ fwrite( $handle, "$x $y $z $label $index\r\n" ); }
+}
+
 
 /**
  * This skips the first 2 lines of output (current & parent directory)
@@ -116,7 +137,6 @@ function processClass($key, $class, $writefile)
 		processFiles( $directory, $writefile );
 		print "Added $class to output\n";
 	}
-
 }
 
 /**
@@ -205,35 +225,23 @@ function processFile($readfile, $writefile)
  */
 function extractPosition( $writefile, $line )
 {
-	global $counter;
+	global $counter, $color, $globalclass;
 	if ($counter == 4)
-	{ fwrite( $writefile, translatePosition( $line ) ); }
-}
+	{
+		// The order coordinates appear in the hex is y,z,x
+		// Format to floats
+		$y = Helper::unpackFloat( substr( $line, 0, 4 ) );
+		$z = Helper::unpackFloat( substr( $line, 4, 4 ) );
+		$x = Helper::unpackFloat( substr( $line, 8, 4 ) );
 
-/**
- * Reformat the binary line into float coordinates
- *
- * @param $line
- * @param $color
- * @return string
- */
-function translatePosition( $line )
-{
-	global $color, $globalclass;
+		setBounds( $x, $y, $z );
 
-	// The order coordinates appear in the hex is y,z,x
-	// Format to floats
-	$y = Helper::unpackFloat( substr( $line, 0, 4 ) ) );
-	$z = Helper::unpackFloat( substr( $line, 4, 4 ) ) );
-	$x = Helper::unpackFloat( substr( $line, 8, 4 ) ) );
-
-	setBounds( $x, $y, $z );
-
-	// output the coords and color index;
-	$Label = preg_replace( '/P_/', '', $globalclass );
-	$Label = preg_replace( '/C_/', '', $Label );
-	$Label = preg_replace( '/_/', '-', $Label );
-	return "$x $y $z \"$Label\" $color\r\n";
+		// output the coords and color index;
+		$Label = preg_replace( '/P_/', '', $globalclass );
+		$Label = preg_replace( '/C_/', '', $Label );
+		$Label = preg_replace( '/_/', '-', $Label );
+		writePosition( $writefile, $x, $y, $z, $Label, $color );
+	}
 }
 
 function setBounds( $x, $y, $z )
