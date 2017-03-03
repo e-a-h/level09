@@ -130,17 +130,25 @@ class Helper
 	}
 
 	/**
- * @param $directory (String) Directory name
- */
-	function validateDirectory( $directory )
+	 * @param $directory (String) Directory name
+	 */
+	function validateDirectory( $directory, $verbose = false )
 	{
 		if( $path = realpath( $directory ) )
-		{ return $path; }
+		{
+			if( $verbose )
+			{ echo "Using directory: $path\n"; }
+			return $path;
+		}
 		else
 		{
 			$path = realpath( "./" ) . '/' . $directory;
 			if( mkdir( $path, 0777, true ) )
-			{ return realpath( $path ); }
+			{
+				if( $verbose )
+				{ echo "Created directory: $path\n"; }
+				return realpath( $path );
+			}
 		}
 		return false;
 	}

@@ -1,5 +1,6 @@
 <?php
 require_once 'Helper.php';
+require_once 'HullInstance.php';
 
 // config variables
 // what levels will we extract?
@@ -9,9 +10,15 @@ $levels = array(
   'Matt', 'Mountain', 'Ruins', 'Summit',
 );
 
+$options = getopt( "l:" );
+if( ! empty( $options ) && ! empty( $options['l'] ) )
+{
+	$levels = explode( ',', $options['l'] );
+}
+
 // state variables
 $directory = '';
-$hash      = '';
+$uid      = '';
 $class     = '';
 $object    = '';
 $counter   = 0;
@@ -76,6 +83,7 @@ function processFile( $handle )
 	// seek to start of first instance
 	fseek( $handle, 16 );
 
+	HullInstance::setDirectory( $directory );
 	$Instances = array();
 	$NextInstanceOffset = ftell( $handle );
 	// The last "NextInstanceOffset" is 0x00000000 and should break this loop
@@ -86,12 +94,12 @@ function processFile( $handle )
 	Helper::plog("$directory Instance count: ".count($Instances));
 
 	// TODO: convert the $Instances object to db
-	// TODO: convert the $Instances object to directory of obj or collada models
 }
 
 /// \brief unpack a hull instance
 function unpackInstance( $handle, $StartOffset, &$Instances )
 {
+	global $directory;
 	// Go to instance start, plus one row
 	fseek( $handle, $StartOffset+16 );
 
@@ -121,10 +129,7 @@ function unpackInstance( $handle, $StartOffset, &$Instances )
 
 	// Offset for the beginning of the next instance
 	$NextInstanceOffset = Helper::extractLong( $handle );
-	$hash = fread( $handle, 32 );
-	$hash = current( unpack( 'A', $hash ) );
-
-	// TODO: extract into the following using offsets and counts from above
+	$uid = fread( $handle, 32 );
 
 	// array of char
 	$Faces = array();
@@ -181,15 +186,17 @@ function unpackInstance( $handle, $StartOffset, &$Instances )
 		"MysteryLongA" => $MysteryLongA,
 		"MysteryLongB" => $MysteryLongB,
 		"MysteryFloat" => $MysteryFloat,
-		"hash" => $hash,
-		"Verts" => $Verts,
-		"Faces" => $Faces,
-		"Edges" => $Edges,
-		"Index" => $Index,
+		"uid" => $uid,
+		"vertices" => $Verts,
+		"faces" => $Faces,
+		"edges" => $Edges,
+		"index" => $Index,
 	);
 
-	$Instances[] = $Instance;
-	// print_r($Instance);
+	$Hull = new HullInstance( $Instance );
+	$Hull->exportObj();
+
+	$Instances[] = $Hull;
 	return $NextInstanceOffset;
 }
 

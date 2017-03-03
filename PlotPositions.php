@@ -4,12 +4,16 @@ require_once 'Helper.php';
 // options
 // Example to export maya locator script:
 // php PlotPositions.php -m
-$options = getopt( "m" );
+$options = getopt( "ml:" );
 $exportMEL = isset( $options['m'] );
 
 /* config variables */
 // which level do we search?
-$level = 'Bryan';
+if( empty( $options ) || empty( $options['l'] ) )
+{
+	exit( "Specifcy a level!\n" );
+}
+$level = $options['l'];
 $globalclass;
 
 // unique descriptor for your output file name
@@ -168,7 +172,6 @@ function setColor($class)
 function processFiles($directory, $writefile)
 {
 	$files = getDirectoryContents($directory);
-
 	foreach( $files as $file )
 	{
 		if( !stristr( $file, '.' ) )

@@ -4,10 +4,27 @@ require_once 'Helper.php';
 // config variables
 // what levels will we extract?
 $levels = array(
-	'Barrens', 'Bryan', 'Canyon', 'Cave',
-	'Chris', 'Credits', 'Desert', 'Graveyard',
-	'Matt', 'Mountain', 'Ruins', 'Summit'
+	'Barrens',
+	'Bryan',
+	'Canyon',
+	'Cave',
+	'Chris',
+	'Credits',
+	'Desert',
+	'Graveyard',
+	'Matt',
+	'Mountain',
+	'Ruins',
+	'Summit'
 );
+
+$options = getopt( "ml:" );
+$exportMEL = isset( $options['m'] );
+
+if( ! empty( $options ) && ! empty( $options['l'] ) )
+{
+	$levels = explode( ',', $options['l'] );
+}
 
 // state variables
 $directory = '';
