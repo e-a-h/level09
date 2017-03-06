@@ -1,19 +1,19 @@
 <?php
 require_once 'Helper.php';
 
-// options
-// Example to export maya locator script:
+// Flag to export maya locator script:
 // php PlotPositions.php -m
 $options = getopt( "m" );
 $exportMEL = isset( $options['m'] );
+Helper::helpMe( array( Helper::HelpMel, Helper::HelpSingleLevel ) );
 
-/* config variables */
-// which level do we search?
-$level = 'Bryan';
+// get level from -l flag
+$level = Helper::filterLevels(true);
+
 $globalclass;
 
 // unique descriptor for your output file name
-$descriptor = 'rock-flag';
+$descriptor = 'meshinstance';
 
 $minx = 9999;
 $miny = 9999;
@@ -76,31 +76,41 @@ function scanInstances()
 	$avx = ( $minx + $maxx ) / 2;
 	$avy = ( $miny + $maxy ) / 2;
 	$avz = ( $minz + $maxz ) / 2;
+
+	$globalclass = "north";
 	writePosition( $writefile, $maxx, $avy, 0, "north", 0 );
+	$globalclass = "south";
 	writePosition( $writefile, $minx, $avy, 0, "south", 0 );
+	$globalclass = "east";
 	writePosition( $writefile, $avx, $miny, 0, "east", 0 );
+	$globalclass = "west";
 	writePosition( $writefile, $avx, $maxy, 0, "west", 0 );
 
 	fclose( $writefile );
-	/* After this, you can plot in gnuplot using:
-gnuplot> set xlabel "x axis"; set ylabel "y axis"; set zlabel "z axis"; set view equal xyz
-gnuplot> splot 'Level_Barrens/rock-flag-positions.txt' u 1:2:3:4:5 w labels tc palette offset 0,-1 point palette
+	/*
+	After this, you can plot in gnuplot using:
+	gnuplot> set xlabel "x axis"; set ylabel "y axis"; set zlabel "z axis"; set view equal xyz
+	gnuplot> splot 'Level_Barrens/rock-flag-positions.txt' u 1:2:3:4:5 w labels tc palette offset 0,-1 point palette
  */
 }
 
 // output a line to the output file
 function writePosition( $handle, $x, $y, $z, $label="", $index=0 )
 {
-	global $exportMEL;
+	global $exportMEL, $globalclass;
 	if( $exportMEL )
 	{
 		fwrite( $handle, "spaceLocator -p $x $y $z" );
 		if( ! empty( $label ) )
 		{ fwrite( $handle, " -n \"$label\";" ); }
 		fwrite( $handle, "\r\n" );
+		print "Added locator $globalclass to script\n";
 	}
 	else
-	{ fwrite( $handle, "$x $y $z $label $index\r\n" ); }
+	{
+		fwrite( $handle, "$x $y $z $label $index\r\n" );
+		print "Added $globalclass to output\n";
+	}
 }
 
 
@@ -115,6 +125,10 @@ function getDirectoryContents($directory)
 	array_shift( $contents ); // skip .
 	array_shift( $contents ); // skip ..
 
+	if( empty( $contents ) )
+	{
+		exit( "No mesh instances found in $directory.\nTry ExtractLevels script first." );
+	}
 	return $contents;
 }
 
@@ -135,7 +149,6 @@ function processClass($key, $class, $writefile)
 		$color     = ++$color;
 		// setColor($class);
 		processFiles( $directory, $writefile );
-		print "Added $class to output\n";
 	}
 }
 
@@ -168,10 +181,9 @@ function setColor($class)
 function processFiles($directory, $writefile)
 {
 	$files = getDirectoryContents($directory);
-
 	foreach( $files as $file )
 	{
-		if( !stristr( $file, '.' ) )
+		if( ! stristr( $file, '.' ) )
 		{ handleFile( $directory, $writefile, $file ); }
 	}
 }

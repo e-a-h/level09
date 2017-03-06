@@ -1,7 +1,11 @@
 <?php
 
+/// \brief Helper class for reverse-engineering binary data
 class Helper
 {
+	const HelpMultiLevel = 0;
+	const HelpSingleLevel = 1;
+	const HelpMel = 2;
 
 	public static function plog( $str )
 	{
@@ -13,6 +17,100 @@ class Helper
 		$testint = 0x00FF;
 		$p       = pack('S', $testint);
 		return $testint === current(unpack('v', $p));
+	}
+
+	public static function helpMe( $options )
+	{
+		// Array of options presented by the calling script
+		$MultiLevel = in_array( self::HelpMultiLevel, $options );
+		$SingleLevel = in_array( self::HelpSingleLevel, $options );
+		$Mel = in_array( self::HelpMel, $options );
+		
+		$options = getopt( 'h' );
+		if( isset( $options['h'] ) )
+		{
+			print "Usage:\n";
+			if( $MultiLevel )
+			{
+echo <<< EOF
+-l Level: Specify level name or comma-separated list of level
+   names. E.g. `-l Canyon,Bryan,Graveyard` or repeate the flag
+   to operate on many levels, e.g. `-level Bryan -level Chris`
+   If this flag is omitted, all levels will be processed.
+
+EOF;
+			}
+			
+			if( ! $MultiLevel && $SingleLevel )
+			{
+echo <<< EOF
+-l Level [required]: Specify level name e.g. `-l Canyon`
+   Exactly one level is required for this script.
+
+EOF;
+			}
+
+			if( $Mel )
+			{
+echo <<< EOF
+-m MEL (maya) export mode [optional]: Exports MEL script for creating
+   locators with corresponding mesh names
+
+EOF;
+			}
+
+			print "-h Show this message.\n";
+			exit();
+		}
+	}
+
+	public static function filterLevels( $SingleLevel = false )
+	{
+		$levels = array(
+			'Barrens',
+			'Bryan',
+			'Canyon',
+			'Cave',
+			'Chris',
+			'Credits',
+			'Desert',
+			'Graveyard',
+			'Matt',
+			'Mountain',
+			'Ruins',
+			'Summit'
+		);
+
+		$options = getopt( "l:" );
+
+		if( ! empty( $options ) && ! empty( $options['l'] ) )
+		{
+			$paramlevels = array();
+			$params = $options['l'];
+
+			if( is_string( $params ) )
+			{ $params = array( $params ); }
+
+			foreach( $params as $levelstring )
+			{ $paramlevels = array_merge( $paramlevels, explode( ',', $levelstring ) ); }
+			foreach( $paramlevels as $key => $level )
+			{
+				if( ! in_array( $level, $levels, true ) )
+				{ unset( $paramlevels[$key] ); }
+			}
+			$levels = array_values( $paramlevels ); // re-index
+		}
+
+		if( $SingleLevel )
+		{
+			if( count( $levels ) !== 1 )
+			{ exit( "Specifcy one level!\n" ); }
+			return $levels[0];
+		}
+
+		if( empty( $levels ) )
+		{ exit( "Specifcy a level!\n" ); }
+		return $levels;
 	}
 
 	public static function correctEndianness($binary)
@@ -130,17 +228,25 @@ class Helper
 	}
 
 	/**
- * @param $directory (String) Directory name
- */
-	function validateDirectory( $directory )
+	 * @param $directory (String) Directory name
+	 */
+	function validateDirectory( $directory, $verbose = false )
 	{
 		if( $path = realpath( $directory ) )
-		{ return $path; }
+		{
+			if( $verbose )
+			{ echo "Using directory: $path\n"; }
+			return $path;
+		}
 		else
 		{
 			$path = realpath( "./" ) . '/' . $directory;
 			if( mkdir( $path, 0777, true ) )
-			{ return realpath( $path ); }
+			{
+				if( $verbose )
+				{ echo "Created directory: $path\n"; }
+				return realpath( $path );
+			}
 		}
 		return false;
 	}

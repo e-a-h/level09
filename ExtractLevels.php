@@ -1,33 +1,26 @@
 <?php
 require_once 'Helper.php';
 
-// config variables
-// what levels will we extract?
-$levels = array(
-	'Barrens', 'Bryan', 'Canyon', 'Cave',
-	'Chris', 'Credits', 'Desert', 'Graveyard',
-	'Matt', 'Mountain', 'Ruins', 'Summit'
-);
-
 // state variables
 $directory = '';
 $hash = '';
 $class = '';
 $instance = '';
 $counter = 0;
+Helper::helpMe( array( Helper::HelpMultiLevel ) );
 
 /**
  * Loop through each level's DecorationMeshInstances to process, and manage state between files
  */
 function loopThroughLevels()
 {
-	global $levels, $directory, $counter;
+	global $directory, $counter;
 
+	$levels = Helper::filterLevels();
 	foreach( $levels as $level )
 	{
 		$counter = 0;
 		$directory = "Level_$level";
-
 		handleFile();
 	}
 }
@@ -38,7 +31,6 @@ function loopThroughLevels()
 function handleFile()
 {
 	global $directory;
-
 	$readfile = fopen("$directory/DecorationMeshInstances.lua.bin", "r");
 
 	if( $readfile )
