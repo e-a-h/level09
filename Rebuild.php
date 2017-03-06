@@ -1,19 +1,14 @@
 <?php
+require_once 'Helper.php';
+
 // this could take a while...
 ini_set("memory_limit", "-1");
 set_time_limit(0);
 // used for backup filenames
 date_default_timezone_set("America/Chicago");
 
-/*      config variables    */
-// what levels will we extract?
-$levels = array(
-  'Barrens', 'Bryan', 'Canyon', 'Cave',
-  'Chris', 'Credits', 'Desert', 'Graveyard',
-  'Matt', 'Mountain', 'Ruins', 'Summit'
-);
-
-
+Helper::helpMe( array( Helper::HelpMultiLevel ) );
+$levels = Helper::filterLevels();
 
 /**
  * Loop through each level's DecorationMeshInstances to process, and manage state between files

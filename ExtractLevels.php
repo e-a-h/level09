@@ -7,6 +7,7 @@ $hash = '';
 $class = '';
 $instance = '';
 $counter = 0;
+Helper::helpMe( array( Helper::HelpMultiLevel ) );
 
 /**
  * Loop through each level's DecorationMeshInstances to process, and manage state between files

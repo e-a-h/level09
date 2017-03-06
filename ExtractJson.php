@@ -5,13 +5,7 @@ require_once 'Helper.php';
 ini_set("memory_limit", "-1");
 set_time_limit(0);
 
-/*      config variables    */
-// what levels will we extract?
-$levels = array(
-  'Barrens', 'Bryan', 'Canyon', 'Cave',
-  'Chris', 'Credits', 'Desert', 'Graveyard',
-  'Matt', 'Mountain', 'Ruins', 'Summit'
-);
+Helper::helpMe( array( Helper::HelpMultiLevel ) );
 
 /*      state variables     */
 // stores our current decoration mesh until we're ready to write to file
@@ -26,7 +20,8 @@ $instanceCount = 0;
  */
 function loopThroughLevels()
 {
-	global $levels, $lineCount, $instanceCount;
+	global $lineCount, $instanceCount;
+	$levels = Helper::filterLevels();
 
 	foreach( $levels as $level )
 	{

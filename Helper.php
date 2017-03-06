@@ -3,6 +3,9 @@
 /// \brief Helper class for reverse-engineering binary data
 class Helper
 {
+	const HelpMultiLevel = 0;
+	const HelpSingleLevel = 1;
+	const HelpMel = 2;
 
 	public static function plog( $str )
 	{
@@ -14,6 +17,51 @@ class Helper
 		$testint = 0x00FF;
 		$p       = pack('S', $testint);
 		return $testint === current(unpack('v', $p));
+	}
+
+	public static function helpMe( $options )
+	{
+		// Array of options presented by the calling script
+		$MultiLevel = in_array( self::HelpMultiLevel, $options );
+		$SingleLevel = in_array( self::HelpSingleLevel, $options );
+		$Mel = in_array( self::HelpMel, $options );
+		
+		$options = getopt( 'h' );
+		if( isset( $options['h'] ) )
+		{
+			print "Usage:\n";
+			if( $MultiLevel )
+			{
+echo <<< EOF
+-l Level: Specify level name or comma-separated list of level
+   names. E.g. `-l Canyon,Bryan,Graveyard` or repeate the flag
+   to operate on many levels, e.g. `-level Bryan -level Chris`
+   If this flag is omitted, all levels will be processed.
+
+EOF;
+			}
+			
+			if( ! $MultiLevel && $SingleLevel )
+			{
+echo <<< EOF
+-l Level [required]: Specify level name e.g. `-l Canyon`
+   Exactly one level is required for this script.
+
+EOF;
+			}
+
+			if( $Mel )
+			{
+echo <<< EOF
+-m MEL (maya) export mode [optional]: Exports MEL script for creating
+   locators with corresponding mesh names
+
+EOF;
+			}
+
+			print "-h Show this message.\n";
+			exit();
+		}
 	}
 
 	public static function filterLevels( $SingleLevel = false )

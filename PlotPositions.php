@@ -3,8 +3,9 @@ require_once 'Helper.php';
 
 // Flag to export maya locator script:
 // php PlotPositions.php -m
-$options = getopt( "ml:" );
+$options = getopt( "m" );
 $exportMEL = isset( $options['m'] );
+Helper::helpMe( array( Helper::HelpMel, Helper::HelpSingleLevel ) );
 
 // get level from -l flag
 $level = Helper::filterLevels(true);

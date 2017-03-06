@@ -2,28 +2,7 @@
 require_once 'Helper.php';
 require_once 'HullInstance.php';
 
-// config variables
-// what levels will we extract?
-$levels = array(
-  'Barrens',
-  'Bryan',
-  'Canyon',
-  'Cave',
-  'Chris',
-  'Credits',
-  'Desert',
-  'Graveyard',
-  'Matt',
-  'Mountain',
-  'Ruins',
-  'Summit',
-);
-
-$options = getopt( "l:" );
-if( ! empty( $options ) && ! empty( $options['l'] ) )
-{
-	$levels = explode( ',', $options['l'] );
-}
+Helper::helpMe( array( Helper::HelpMultiLevel ) );
 
 // state variables
 $directory = '';
@@ -38,7 +17,8 @@ $set       = 0;
  */
 function loopThroughLevels()
 {
-	global $levels, $directory, $counter, $set;
+	global $directory, $counter, $set;
+	$levels = Helper::filterLevels();
 
 	foreach ($levels as $level)
 	{

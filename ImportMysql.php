@@ -4,10 +4,8 @@ require_once 'dbHandler.php';
 // this could take a while...
 ini_set("memory_limit", "-1");
 set_time_limit(0);
-
-
+Helper::helpMe( array( Helper::HelpMultiLevel ) );
 $levels = Helper::filterLevels();
-
 $instance_buffer = array();
 $property_buffer = array();
 
