@@ -5,24 +5,8 @@ require_once 'dbHandler.php';
 ini_set("memory_limit", "-1");
 set_time_limit(0);
 
-/*      config variables        */
-// what levels will we extract?
-$levels = array(
-	'Barrens',
-	'Bryan',
-	'Canyon',
-	'Cave',
-	'Chris',
-	'Credits',
-	'Desert',
-	'Graveyard',
-	'Matt',
-	'Mountain',
-	'Ruins',
-	'Summit',
-);
 
-Helper::filterLevels();
+$levels = Helper::filterLevels();
 
 $instance_buffer = array();
 $property_buffer = array();
@@ -43,7 +27,6 @@ function openDatabase()
 	$db = dbHandler::connectByHost();
 	// $db = dbHandler::connectBySocket();
 	$instanceId = dbHandler::initAutoIncrement( $db, 'mesh_instances' );
-	Helper::plog($instanceId); exit();
 }
 
 /**
