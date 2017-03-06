@@ -5,9 +5,18 @@ require_once 'HullInstance.php';
 // config variables
 // what levels will we extract?
 $levels = array(
-  'Barrens', 'Bryan', 'Canyon', 'Cave',
-  'Chris', 'Credits', 'Desert', 'Graveyard',
-  'Matt', 'Mountain', 'Ruins', 'Summit',
+  'Barrens',
+  'Bryan',
+  'Canyon',
+  'Cave',
+  'Chris',
+  'Credits',
+  'Desert',
+  'Graveyard',
+  'Matt',
+  'Mountain',
+  'Ruins',
+  'Summit',
 );
 
 $options = getopt( "l:" );
@@ -99,19 +108,21 @@ function processFile( $handle )
 /// \brief unpack a hull instance
 function unpackInstance( $handle, $StartOffset, &$Instances )
 {
-	global $directory;
 	// Go to instance start, plus one row
 	fseek( $handle, $StartOffset+16 );
 
+	// Count up values of assumed zero-padding to ensure no values are missed
+	$Zero = 0;
+
 	// get some vectors. what are they? nobody knows.
 	$a = Helper::unpackFloatVector( fread( $handle, 12 ) );
-	fseek( $handle, 4, SEEK_CUR );
+	$Zero += Helper::extractLong( $handle );
 	$b = Helper::unpackFloatVector( fread( $handle, 12 ) );
-	fseek( $handle, 4, SEEK_CUR );
+	$Zero += Helper::extractLong( $handle );
 	$c = Helper::unpackFloatVector( fread( $handle, 12 ) );
-	fseek( $handle, 4, SEEK_CUR );
+	$Zero += Helper::extractLong( $handle );
 	$d = Helper::unpackFloatVector( fread( $handle, 12 ) );
-	fseek( $handle, 4, SEEK_CUR );
+	$Zero += Helper::extractLong( $handle );
 
 	// Array of offsets for face,index,edge,vert
 	$Offsets = Helper::unpackFourLong( $handle );
@@ -123,13 +134,14 @@ function unpackInstance( $handle, $StartOffset, &$Instances )
 	$MysteryLongA = Helper::extractLong( $handle );
 	$MysteryLongB = Helper::extractLong( $handle );
 	$MysteryFloat = Helper::extractFloat( $handle );
-
-	// skip 4 bytes of zero-padding
-	fseek( $handle, 4, SEEK_CUR );
-
+	$Zero += Helper::extractLong( $handle );
+	
 	// Offset for the beginning of the next instance
 	$NextInstanceOffset = Helper::extractLong( $handle );
 	$uid = fread( $handle, 32 );
+
+	if( $Zero !== 0 )
+	{ exit( "Unexepcted non-zero value $Zero in instance $uid\n" ); }
 
 	// array of char
 	$Faces = array();

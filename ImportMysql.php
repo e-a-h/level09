@@ -22,6 +22,8 @@ $levels = array(
 	'Summit',
 );
 
+Helper::filterLevels();
+
 $instance_buffer = array();
 $property_buffer = array();
 
@@ -37,28 +39,11 @@ $db = null;
  */
 function openDatabase()
 {
-	global $db;
+	global $db, $instanceId;
 	$db = dbHandler::connectByHost();
 	// $db = dbHandler::connectBySocket();
-	initAutoIncrement();
-}
-
-function initAutoIncrement()
-{
-	global $db, $instanceId;
-
-	$sql = "SELECT `AUTO_INCREMENT` "
-	     . "FROM INFORMATION_SCHEMA.TABLES "
-	     . "WHERE TABLE_SCHEMA = 'journey_meshes' "
-	     . "AND TABLE_NAME = 'mesh_instances';";
-	$query = $db->prepare( $sql );
-	$query->execute();
-	$result = $query->fetch();
-
-	if( $result !== false )
-	{ $instanceId = intval( $result[0] ); }
-	else
-	{ exit( "Failed to find auto_increment value\n" ); }
+	$instanceId = dbHandler::initAutoIncrement( $db, 'mesh_instances' );
+	Helper::plog($instanceId); exit();
 }
 
 /**

@@ -30,7 +30,7 @@ echo ""
 if [ "$1" != "-r" ]; then
 
   # Extract
-  gunzip TerrainData.bin.gz
+  gunzip -k TerrainData.bin.gz
   mkdir $EXTRACTDIR
   quickbms.exe $SCRIPTPATH TerrainData.bin $EXTRACTDIR
 
@@ -52,16 +52,24 @@ else
   # Restore
   cd $MODIFIED
   #TODO: check for existence of each component and skip if not
-  stream -map i -depth 8 BlockMapA.tif BlockMapA.raw
-  stream -map i -depth 8 BlockMapB.tif BlockMapB.raw
-  stream -map rgba -storage-type char DustMap.tif DustMap.raw
-  convert -depth 16 -endian MSB HeightMap.tif HeightMap.gray
+  if [ -f BlockMapA.tif ]; then
+    stream -map i -depth 8 BlockMapA.tif BlockMapA.raw
+  fi
+  if [ -f BlockMapB.tif ]; then
+    stream -map i -depth 8 BlockMapB.tif BlockMapB.raw
+  fi
+  if [ -f DustMap.tif ]; then
+    stream -map rgba -storage-type char DustMap.tif DustMap.raw
+  fi
+  if [ -f HeightMap.tif ]; then
+    convert -depth 16 -endian MSB HeightMap.tif HeightMap.gray
+  fi
   mv HeightMap.gray HeightMap.raw
 
   # TODO: check for existence of TerrainData.bin file and warn/exit if not
   cd $STARTDIR
   quickbms.exe -w -r $SCRIPTPATH TerrainData.bin $MODIFIED
-  gzip TerrainData.bin
+  gzip -k TerrainData.bin
 
   exit 1
 fi

@@ -1,31 +1,6 @@
 <?php
 require_once 'Helper.php';
 
-// config variables
-// what levels will we extract?
-$levels = array(
-	'Barrens',
-	'Bryan',
-	'Canyon',
-	'Cave',
-	'Chris',
-	'Credits',
-	'Desert',
-	'Graveyard',
-	'Matt',
-	'Mountain',
-	'Ruins',
-	'Summit'
-);
-
-$options = getopt( "ml:" );
-$exportMEL = isset( $options['m'] );
-
-if( ! empty( $options ) && ! empty( $options['l'] ) )
-{
-	$levels = explode( ',', $options['l'] );
-}
-
 // state variables
 $directory = '';
 $hash = '';
@@ -38,13 +13,13 @@ $counter = 0;
  */
 function loopThroughLevels()
 {
-	global $levels, $directory, $counter;
+	global $directory, $counter;
 
+	$levels = Helper::filterLevels();
 	foreach( $levels as $level )
 	{
 		$counter = 0;
 		$directory = "Level_$level";
-
 		handleFile();
 	}
 }
@@ -55,7 +30,6 @@ function loopThroughLevels()
 function handleFile()
 {
 	global $directory;
-
 	$readfile = fopen("$directory/DecorationMeshInstances.lua.bin", "r");
 
 	if( $readfile )

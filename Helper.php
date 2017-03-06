@@ -1,5 +1,6 @@
 <?php
 
+/// \brief Helper class for reverse-engineering binary data
 class Helper
 {
 
@@ -13,6 +14,55 @@ class Helper
 		$testint = 0x00FF;
 		$p       = pack('S', $testint);
 		return $testint === current(unpack('v', $p));
+	}
+
+	public static function filterLevels( $SingleLevel = false )
+	{
+		$levels = array(
+			'Barrens',
+			'Bryan',
+			'Canyon',
+			'Cave',
+			'Chris',
+			'Credits',
+			'Desert',
+			'Graveyard',
+			'Matt',
+			'Mountain',
+			'Ruins',
+			'Summit'
+		);
+
+		$options = getopt( "l:" );
+
+		if( ! empty( $options ) && ! empty( $options['l'] ) )
+		{
+			$paramlevels = array();
+			$params = $options['l'];
+
+			if( is_string( $params ) )
+			{ $params = array( $params ); }
+
+			foreach( $params as $levelstring )
+			{ $paramlevels = array_merge( $paramlevels, explode( ',', $levelstring ) ); }
+			foreach( $paramlevels as $key => $level )
+			{
+				if( ! in_array( $level, $levels, true ) )
+				{ unset( $paramlevels[$key] ); }
+			}
+			$levels = array_values( $paramlevels ); // re-index
+		}
+
+		if( $SingleLevel )
+		{
+			if( count( $levels ) !== 1 )
+			{ exit( "Specifcy one level!\n" ); }
+			return $levels[0];
+		}
+
+		if( empty( $levels ) )
+		{ exit( "Specifcy a level!\n" ); }
+		return $levels;
 	}
 
 	public static function correctEndianness($binary)
