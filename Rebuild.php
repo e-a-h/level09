@@ -8,15 +8,13 @@ set_time_limit(0);
 date_default_timezone_set("America/Chicago");
 
 Helper::helpMe( array( Helper::HelpMultiLevel ) );
-$levels = Helper::filterLevels();
 
 /**
  * Loop through each level's DecorationMeshInstances to process, and manage state between files
  */
 function loopThroughLevels()
 {
-	global $levels;
-
+	$levels = Helper::filterLevels();
 	foreach($levels as $level) {
 		backupLevel($level);
 		rebuildLevel($level);
