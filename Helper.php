@@ -7,9 +7,13 @@ class Helper
 	const HelpSingleLevel = 1;
 	const HelpMel = 2;
 
-	public static function plog( $str )
+	public static function plog( $str, $exit = false )
 	{
+		if( ! is_string( $str ) )
+		{ $str = print_r( $str, 1); }
 		print "$str\r\n";
+		if( $exit )
+		{ exit(); }
 	}
 
 	public static function machineIsLittleEndian()
