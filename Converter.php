@@ -30,7 +30,7 @@ $output = array();
 foreach( $floats as $val )
 {
   $val = pack( 'f', $val );
-  $output[] = bin2hex(strrev($val));
+  $output[] = bin2hex(Helper::correctEndianness($val));
 }
 
 if( !empty( $options['a'] ) )
