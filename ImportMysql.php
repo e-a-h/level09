@@ -1,10 +1,13 @@
 <?php
 require_once 'dbHandler.php';
 
+// TODO: convert this to class
+
 // this could take a while...
 ini_set("memory_limit", "-1");
 set_time_limit(0);
-Helper::helpMe( array( Helper::HelpMultiLevel ) );
+$options = Helper::helpMe( array( Helper::HelpMultiLevel ) );
+$levels = $options->getLevels();
 $instance_buffer = array();
 $property_buffer = array();
 
@@ -31,8 +34,7 @@ function openDatabase()
  */
 function loopThroughLevels()
 {
-	global $levelIndex;
-	$levels = Helper::filterLevels();
+	global $levelIndex, $levels;
 
 	foreach( $levels as $level )
 	{
@@ -94,16 +96,15 @@ function getDirectoryContents( $directory )
 /**
  * Handle the read file resource
  *
- * @param $file
+ * @param $filepath
  */
 function processInstance( $filepath )
 {
 	global $instanceId, $instance_buffer;
 
-	// Process 500 at a time to speed up queries
+	// Process 50 at a time to speed up queries
 	if( count( $instance_buffer ) == 50 )
 	{ executeBuffer(); }
-
 
 	$instance = json_decode( file_get_contents( $filepath ) );
 
@@ -201,7 +202,6 @@ function importInstanceProperties( $properties )
  *
  * @param $key
  * @param $data
- * @param $instanceId
  */
 function importInstanceProperty( $key, $data )
 {

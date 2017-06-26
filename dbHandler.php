@@ -38,7 +38,7 @@ class dbHandler
 		}
 	}
 
-	public static function initAutoIncrement( $db, $table )
+	public static function initAutoIncrement( PDO $db, string $table )
 	{
 		$autoinc_tables = array(
 		  'mesh_instances',

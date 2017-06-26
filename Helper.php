@@ -1,13 +1,33 @@
 <?php
+require_once "InvocationOptions.php";
 
 /// \brief Helper class for reverse-engineering binary data
 class Helper
 {
-	const HelpMultiLevel = 0;
-	const HelpSingleLevel = 1;
-	const HelpMel = 2;
+  const HelpMultiLevel = 'Multi-Level';
+  const HelpSingleLevel = 'Single Level';
+  const HelpMel = 'Maya/MEL Export';
+  const HelpDbIn = 'Db Insert';
+  const HelpDbOut = 'Db Extract';
+  const HelpStandardMode = 'Standard';
+  const HelpDryRun = 'Dry Run (No disk/db modification)';
 
-	public static function plog( $str, $exit = false )
+  public static $LevelList = array(
+    'Barrens',
+    'Bryan',
+    'Canyon',
+    'Cave',
+    'Chris',
+    'Credits',
+    'Desert',
+    'Graveyard',
+    'Matt',
+    'Mountain',
+    'Ruins',
+    'Summit'
+  );
+
+  public static function plog( $str, $exit = false )
 	{
 		if( ! is_string( $str ) )
 		{ $str = print_r( $str, 1); }
@@ -23,106 +43,341 @@ class Helper
 		return $testint === current(unpack('v', $p));
 	}
 
-	public static function helpMe( $options )
+	public static function helpMe( $options ) : InvocationOptions
 	{
-		// Array of options presented by the calling script
-		$MultiLevel = in_array( self::HelpMultiLevel, $options );
-		$SingleLevel = in_array( self::HelpSingleLevel, $options );
-		$Mel = in_array( self::HelpMel, $options );
-		
-		$options = getopt( 'h' );
-		if( isset( $options['h'] ) )
-		{
-			print "Usage:\n";
-			if( $MultiLevel )
-			{
-echo <<< EOF
--l Level: Specify level name or comma-separated list of level
+    if( in_array( self::HelpMultiLevel, $options ) &&
+        in_array( self::HelpSingleLevel, $options ) )
+    { exit( 'Script misconfigured: Single and multi-level options are mutually exclusive' ); }
+
+	  $HelpString = "";
+	  $longoptions = array( 'help' );
+	  $shortoptions = "h";
+	  $SingleLevel = false;
+
+    foreach( $options as $option )
+    {
+      switch( $option )
+      {
+        case self::HelpMultiLevel :
+          $longoptions[] = 'level:';
+          $shortoptions .= 'l:';
+          $HelpString .= <<<EOT
+-l [LevelName], --level [LevelName]
+   Level: Specify level name or comma-separated list of level
    names. E.g. `-l Canyon,Bryan,Graveyard` or repeate the flag
-   to operate on many levels, e.g. `-level Bryan -level Chris`
+   to operate on many levels, e.g. `--level Bryan --level Chris`
    If this flag is omitted, all levels will be processed.
 
-EOF;
-			}
-			
-			if( ! $MultiLevel && $SingleLevel )
-			{
-echo <<< EOF
--l Level [required]: Specify level name e.g. `-l Canyon`
+EOT;
+          break;
+        case self::HelpSingleLevel :
+          $SingleLevel = true;
+          $longoptions[] = 'Level:';
+          $shortoptions .= 'l:';
+          $HelpString .= <<<EOT
+-l [LevelName], --level [LevelName]
+   Level [required]: Specify level name e.g. `-l Canyon` or `--level Barrens`
    Exactly one level is required for this script.
 
-EOF;
-			}
+EOT;
+          break;
+        case self::HelpMel :
+          $longoptions[] = 'MelExport';
+          $shortoptions .= 'm';
+          $HelpString .= <<<EOT
+-m, --MelExport
+   MEL (maya) export mode: Exports MEL script for creating
+   locators with corresponding mesh names.
 
-			if( $Mel )
-			{
-echo <<< EOF
--m MEL (maya) export mode [optional]: Exports MEL script for creating
-   locators with corresponding mesh names
+EOT;
+          break;
+        case self::HelpDbIn :
+          $longoptions[] = 'DbIn';
+          $shortoptions .= 'd';
+          $HelpString .= <<<EOT
+-d, --DbIn
+   Database insert mode: Imports data to respective db tables.
 
-EOF;
-			}
+EOT;
+          break;
+        case self::HelpDbOut :
+          $longoptions[] = 'DbOut';
+          $shortoptions .= 'x';
+          $HelpString .= <<<EOT
+-x, --DbOut
+   Database extract mode: Exports data from respective db tables.
 
-			print "-h Show this message.\n";
+EOT;
+          break;
+        case self::HelpDryRun :
+          $longoptions[] = 'DryRun';
+          $shortoptions .= 'n';
+          $HelpString .= <<<EOT
+-n, --DryRun
+   Dry Run mode: Do not modify database or disk files.
+
+EOT;
+          break;
+      }
+	  }
+
+		$flags = getopt( $shortoptions, $longoptions );
+		if( empty( $flags ) )
+		{ return self::scriptWizard( $options ); }
+
+		if( isset( $flags['h'] ) || isset( $flags['help'] ) )
+		{
+			print "Usage:\n";
+			print $HelpString;
+			print "-h, --help\n   Show this message.\n";
 			exit();
 		}
+
+    $output = new InvocationOptions();
+		$Level = array();
+
+		if( ! empty( $flags['l'] ) )
+		{
+			$Level[] = ( is_array( $flags['l'] ) ) ? join( ',', $flags['l'] ) : $flags['l'];
+		}
+		if( ! empty( $flags['level'] ) )
+		{
+			$Level[] = ( is_array( $flags['level'] ) ) ? join( ',', $flags['level'] ) : $flags['level'];
+		}
+		if( ! empty( $Level ) )
+		{
+			$output->setLevels( self::filterLevels( $Level, $SingleLevel ) );
+		}
+
+		$output->setMelExport( isset( $flags['m'] ) || isset( $flags['MelExport'] ) );
+		$output->setDbIn( isset( $flags['d'] ) || isset( $flags['DbIn'] ) );
+		$output->setDbOut( isset( $flags['x'] ) || isset( $flags['DbOut'] ) );
+		$output->setDryRun( isset( $flags['n'] ) || isset( $flags['DryRun'] ) );
+
+		return $output;
 	}
 
-	public static function filterLevels( $SingleLevel = false )
+	public static function scriptWizard( $options ) : InvocationOptions
 	{
-		$levels = array(
-			'Barrens',
-			'Bryan',
-			'Canyon',
-			'Cave',
-			'Chris',
-			'Credits',
-			'Desert',
-			'Graveyard',
-			'Matt',
-			'Mountain',
-			'Ruins',
-			'Summit'
-		);
+		$output = new InvocationOptions();
+		$modes = array( 's' => self::HelpStandardMode );
 
-		$options = getopt( "l:" );
-
-		if( ! empty( $options ) && ! empty( $options['l'] ) )
+		// Build wizard from script's available options
+		foreach( $options as $option )
 		{
-			$paramlevels = array();
-			$params = $options['l'];
-
-			if( is_string( $params ) )
-			{ $params = array( $params ); }
-
-			foreach( $params as $levelstring )
-			{ $paramlevels = array_merge( $paramlevels, explode( ',', $levelstring ) ); }
-			foreach( $paramlevels as $key => $level )
+			switch( $option )
 			{
-				if( ! in_array( $level, $levels, true ) )
-				{ unset( $paramlevels[$key] ); }
+				case self::HelpMultiLevel :
+					$message = "Select a level (use commas to specify multiple):";
+					$choices = self::$LevelList;
+					$AllLevels = "All Levels";
+					$choices[ 'a' ] = $AllLevels;
+					$output->setLevels( self::cliPrompt( $message, $choices, $AllLevels ) );
+
+					// All Levels chosen. overwrite level options with complete list
+					if( in_array( $AllLevels, $output->getLevels() ) )
+					{ $output->setLevels( self::$LevelList ); }
+
+					$output->setLevels( self::filterLevels( $output->getLevels() ) );
+					break;
+				case self::HelpSingleLevel :
+					$message = "Select a level:\n";
+					$choices = self::$LevelList;
+					$Levels = self::cliPrompt( $message, $choices );
+					$output->setLevels( self::filterLevels( $Levels, true ) );
+					break;
+				case self::HelpMel :
+					$modes['m'] = $option;
+					break;
+				case self::HelpDbIn :
+					$modes['d'] = $option;
+					break;
+				case self::HelpDbOut :
+					$modes['x'] = $option;
+					break;
+				case self::HelpDryRun :
+					$modes['n'] = $option;
+					break;
 			}
-			$levels = array_values( $paramlevels ); // re-index
 		}
 
-		if( $SingleLevel )
+		if( ! empty( $modes ) )
 		{
-			if( count( $levels ) !== 1 )
-			{ exit( "Specifcy one level!\n" ); }
-			return $levels[0];
+			$message = "Specify Output Mode:";
+			$selectedmodes = self::cliPrompt( $message, $modes, "n" );
+			foreach( $selectedmodes as $mode )
+			{
+				switch( $mode )
+				{
+					case self::HelpDryRun:
+						$output->setDryRun( true );
+						break;
+					case self::HelpMel:
+						$output->setMelExport( true );
+						break;
+					case self::HelpDbIn:
+						$output->setDbIn( true );
+						break;
+					case self::HelpDbOut:
+						$output->setDbOut( true );
+						break;
+					case self::HelpStandardMode:
+						$output->setStandardMode( true );
+						break;
+				}
+			}
 		}
 
-		if( empty( $levels ) )
-		{ exit( "Specifcy a level!\n" ); }
-		return $levels;
+		return $output;
 	}
 
-	public static function correctEndianness($binary)
+  public static function cliPrompt( string $message = "", array $choices, string $default = null ):array
+  {
+    $selection = array();
+    if( empty( $choices ) )
+    { exit( "cliPrompt choices misconfigured.\n" ); }
+
+    // Default to the first item in choices
+    if( $default === null )
+    { $default = reset( $choices ); }
+
+    $choices['q'] = 'Quit';
+
+    // Show message and options
+    foreach( $choices as $index => $option )
+    { $message .= "\n\t[$index]\t$option"; }
+    print "$message\n";
+
+    // show prompt line with options
+    $choiceindex = array_keys( $choices );
+    $choicestr = join( ", ", $choiceindex );
+    // regex uses word boundaries to avoid matching "1" to any 2-digit number starting with 1
+    $choicereg = '/\bq\b|\b' . join( '\b|\b', $choiceindex ) . '\b/i';
+
+    while( empty( $line ) )
+    {
+      print "choose [ $choicestr ] (enter to select $default): ";
+      // split on commas
+      $line = fgets( STDIN );
+      foreach( explode( ',', $line ) as $input )
+      {
+        // strip spaces
+        $input = trim( $input );
+        if( empty( $input ) && ( $input !== "0" ) )
+        { continue; }
+
+        $match = array();
+        // match options
+        if( ! preg_match( $choicereg, $input, $match ) )
+        { continue; }
+
+        $selection[] = $choices[ $match[0] ];
+      }
+
+      // Apply default selection
+      if( empty( $selection ) )
+      { $selection[] = $choices[$default]; }
+
+      // always quit on "q"
+      if( in_array( 'Quit', $selection ) )
+      { exit( "Thanks for playing, come again soon!\n" ); }
+
+      // confirm
+      print "\n[[ You selected " . join( ', ', $selection ) . " ]]\n\n\n";
+    }
+    return $selection;
+  }
+
+	public static function filterLevels( $LevelInput, $SingleLevel = false ):array
+  {
+		$LevelWhitelist = self::$LevelList;
+    $SelectedLevels = array();
+    $FilteredLevels = array();
+
+		if( ! empty( $LevelInput ) )
+		{
+			if( is_string( $LevelInput ) )
+			{ $LevelInput = array( $LevelInput ); }
+
+			// separate all the named levels into a single array
+			foreach( $LevelInput as $LevelString )
+			{ $SelectedLevels = array_merge( $SelectedLevels, explode( ',', $LevelString ) ); }
+
+			// remove levels that don't match the level whitelist
+      foreach( $LevelWhitelist as $LevelName )
+      {
+        if( in_array( strtolower( $LevelName ), array_map( 'strtolower', $SelectedLevels ) ) )
+        {
+          $FilteredLevels[] = $LevelName;
+        }
+			}
+		}
+
+		if( $SingleLevel && count( $FilteredLevels ) !== 1 )
+		{ exit( "Specify one level!\n" ); }
+
+		if( empty( $FilteredLevels ) )
+		{ exit( "Specify a level!\n" ); }
+
+		return $FilteredLevels;
+	}
+
+	public static function correctEndianness( $binary )
 	{
 		// Reverse byte order for little-endian machines
 		if( self::machineIsLittleEndian() )
 		{ return strrev($binary); }
 		return $binary;
+	}
+
+	public static function floatArrayToHex( array $options = null )
+	{
+		if( empty( $options ) )
+		{ $options = getopt( 'f:d:a' ); }
+
+		$delimiter = " ";
+		if( ! empty( $options['d'] ) )
+		{ $delimiter = $options['d']; }
+
+		if( ! empty( $options['f'] ) )
+		{
+			$floatstring = preg_replace( '/[\n\r]/', '', $options['f'] );
+			$floats = explode( $delimiter, $floatstring );
+		}
+		else
+		{
+			print "Takes an input of a string of floating point numbers. Numbers are converted\n" .
+				"to big-endian binary and concatenated. Output is hex representation of the\n" .
+				"resulting binary string. Crazy, right?\n";
+			print "Usage:\n";
+			print '-f [required string of floats, e.g. "1.0 2.3 4 0"]';
+			print "\n";
+			print '-d [optional delimiter text, e.g. ","]';
+			print "\n";
+			exit();
+		}
+
+		$output = array();
+		foreach( $floats as $val )
+		{
+			bin2hex( self::float2bin( $val ) );
+		}
+
+		// -a is for debug
+		if( ! empty( $options['a'] ) )
+		{
+			print "\n";
+			Helper::plog( $output );
+			print "\n";
+			print "\n";
+			return $output;
+		}
+
+		print "\n";
+		print implode( '', $output );
+		print "\n";
+		print "\n";
+		return $output;
 	}
 
 	///  \brief Take binary string with length % 4 = 0 as input
@@ -232,9 +487,110 @@ EOF;
 	}
 
 	/**
-	 * @param $directory (String) Directory name
+	 * Pack a float into binary
+	 *
+	 * @param $float
+	 *
+	 * @return string
 	 */
-	function validateDirectory( $directory, $verbose = false )
+	public static function float2bin( string $float ) : string
+	{
+		$bin = pack( 'f', $float );
+		return Helper::correctEndianness( $bin );
+	}
+
+	/**
+	 * Translate ascii into hex
+	 *
+	 * @param $string
+	 * @param int $lines
+	 *
+	 * @return string
+	 */
+	public static function str2bin( string $string, int $lines = 4 ) : string
+	{
+		$hex = $output = '';
+
+		foreach( str_split( $string ) as $character )
+		{
+			// convert each character's ordinal value to hex
+			$hex .= dechex( ord( $character ) );
+		}
+
+		// pad resulting hex with zeroes to 32 characters per line
+		$hex = str_pad( $hex, $lines * 32, '0' );
+
+		// hmmm... this looks like
+		// split the code block into an array of characters,
+		// split the array into arrays of 32 characters,
+		// join the line array back to a string
+		// convert the hex string to binary
+		// repeat for each line and concatenate.
+
+		// WHY???
+
+		// specifically: why not hex2bin the whole block and save the effort?
+		foreach( array_chunk( str_split( $hex ), 32 ) as $line )
+		{
+			$output .= hex2bin( implode( $line ) );
+		}
+
+		// test
+//		$test_str = hex2bin( $hex );
+//		$isSame = strcasecmp( $test_str, $output );
+//
+//		var_dump( $isSame );
+//		exit;
+		// end test
+
+		return $output;
+	}
+
+	/**
+	 * Return a 0-filled string. A chunk is 4 hex characters
+	 *
+	 * @param $chunks
+	 *
+	 * @return string
+	 */
+	public static function pad( int $chunks ) : string
+	{
+		return str_repeat( "0", $chunks * 4 );
+	}
+
+	/**
+	 * Take a string and convert into a float tuple
+	 * Pass 'false' into the second parameter to avoid including a fourth value
+	 *
+	 * @param $line
+	 * @param bool $includeLast
+	 *
+	 * @return string
+	 */
+	public static function floatTuple2Bin( string $line, bool $includeLast = true ) : string
+	{
+		// TODO: enforce line length?
+		$tuple = explode( ' ', $line );
+		$output = self::float2bin( array_shift( $tuple ) );
+		$output .= self::float2bin( array_shift( $tuple ) );
+		$output .= self::float2bin( array_shift( $tuple ) );
+
+		if( $includeLast )
+		{
+			$output .= empty( $tuple ) ?
+				hex2bin( self::pad( 2 ) ) :
+				self::float2bin( array_shift( $tuple ) );
+		}
+
+		return $output;
+	}
+
+	/**
+	 * @param $directory (String) Directory name
+	 * @param $verbose (Bool) Print debug information
+   * @return string
+	 */
+	public static function validateDirectory( string $directory, bool $verbose = false )
 	{
 		if( $path = realpath( $directory ) )
 		{
@@ -253,6 +609,24 @@ EOF;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * This skips all hidden files & directories
+	 *
+	 * @param string $directory
+	 *
+	 * @return array
+	 */
+	public static function getDirectoryContents( string $directory ) : array
+	{
+		$contents = scandir( $directory );
+
+		// ignore hidden files & directories
+		while( strpos( $contents[0], '.' ) === 0 )
+		{ array_shift( $contents ); }
+
+		return $contents;
 	}
 
 }

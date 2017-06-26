@@ -4,26 +4,36 @@ class HullInstance
 {
 	private $faces;
 	private $edges;
+	private $unkownindex;
 	private $vertices;
-	private $posX;
-	private $posY;
-	private $posZ;
+  private $txA;
+  private $txB;
+	private $txC;
+  private $txD;
 	private $mA;
 	private $mB;
 	private $mC;
 	private $uid;
+	private $hullinstanceid;
+	private $nextinstanceoffset;
 	static private $directory;
 	static private $MelScriptPath;
 	static private $HullInstanceDir;
 	static private $HullInstanceWinDir;
 	// Store offsets?
 
-	public function __construct( $data )
+	public function __construct( array $data )
 	{
 		$this->setFaces( $data['faces'] );
 		$this->setEdges( $data['edges'] );
 		$this->setVerts( $data['vertices'] );
-		$this->setPosXYZ( array( $data['posX'], $data['posY'], $data['posZ'] ) );
+		$this->setTransformMatrix( array(
+		  array( $data['txA'][0], $data['txA'][1], $data['txA'][2] ),
+		  array( $data['txB'][0], $data['txB'][1], $data['txB'][2] ),
+		  array( $data['txC'][0], $data['txC'][1], $data['txC'][2] ),
+		  array( $data['txD'][0], $data['txD'][1], $data['txD'][2] ),
+    ) );
+		$this->setUnkownIndex( $data['index'] );
 		$this->setSomeOtherShit(
 		  array(
 				$data['mA'],
@@ -32,7 +42,58 @@ class HullInstance
 			)
 		);
 		$this->setUID( $data['uid'] );
+		$this->setNextInstanceOffset( $data['nextinstanceoffset'] );
 	}
+
+	public function getMysqlValues()
+  {
+    $Result = array(
+      'hull_instance' => array(
+        'uid' => $this->uid,
+        'face_count' => count( $this->faces ),
+        'index_count' => count( $this->unkownindex ),
+        'edge_count' => count( $this->edges ),
+        'vertex_count' => count( $this->vertices ),
+        // These vectors are most likely tranform matrix
+        'transform_matrix_a' => array( $this->txA[0], $this->txA[1], $this->txA[2] ),
+        'transform_matrix_b' => array( $this->txB[0], $this->txB[1], $this->txB[2] ),
+        'transform_matrix_c' => array( $this->txC[0], $this->txC[1], $this->txC[2] ),
+        'transform_matrix_d' => array( $this->txD[0], $this->txD[1], $this->txD[2] ),
+        'prop_a' => $this->mA,// int
+        'prop_b' => $this->mB,// int
+        'prop_c' => $this->mC,// float
+      ),
+      'hull_faces' => array(
+        'hullinstance_id' => $this->hullinstanceid,
+        'face_data' => $this->faces,
+      ),
+      'hull_polydata' => array(
+        'hullinstance_id' => $this->hullinstanceid,
+        'poly_data' => $this->unkownindex,
+      ),
+      'hull_edges' => array(
+        'hullinstance_id' => $this->hullinstanceid,
+        'edge_data' => $this->edges,
+      ),
+      'hull_vertices' => array(),
+    );
+
+    foreach( $this->vertices as $index => $vert )
+    {
+      // TODO: change schema so verts table is 1 row per hullinstance?
+      // JSON format vertex data
+      $newvert = array(
+      'hullinstance_id' => $this->hullinstanceid,
+        'index' => $index,
+        'x' => $vert[0],
+        'y' => $vert[1],
+        'z' => $vert[2],
+      );
+      $Result['hull_vertices'][$index] = $newvert;
+    }
+
+    return $Result;
+  }
 
 	public function exportObj()
 	{
@@ -78,7 +139,7 @@ class HullInstance
 		return $Obj;
 	}
 
-	static public function setDirectory( $directory )
+	static public function setDirectory( string $directory )
 	{
 		self::$directory = $directory;
 		if( self::$HullInstanceDir = Helper::validateDirectory( self::$directory . "/HullInstances", true ) )
@@ -90,8 +151,11 @@ class HullInstance
 
 			self::$MelScriptPath = self::$HullInstanceDir . "/Import_All_Hulls.mel";
 
-			// Delete MEL script file so we don't append to it repeatedly
-			unlink( self::$MelScriptPath );
+      if( file_exists( self::$MelScriptPath ) )
+      {
+        // Delete MEL script file so we don't append to it repeatedly
+        unlink( self::$MelScriptPath );
+      }
 		}
 		else
 		{
@@ -99,48 +163,49 @@ class HullInstance
 		}
 	}
 
-	public function setFaces( $data )
+	public function setFaces( array $data )
 	{
-		// validate
-		if( is_array($data) && ! empty( $data ) )
-		{
-			$this->faces = $data;
-		}
+		if( ! empty( $data ) ) { $this->faces = $data; }
 	}
 
-	public function setEdges( $data )
+	public function setEdges( array $data )
 	{
-		// validate
-		if( is_array($data) && ! empty( $data ) )
-		{
-			$this->edges = $data;
-		}
+		if( ! empty( $data ) ) { $this->edges = $data; }
 	}
 
-	public function setVerts( $data )
+	public function setUnkownIndex( array $data )
 	{
-		// validate
-		if( is_array($data) && ! empty( $data ) )
-		{
-			$this->vertices = $data;
-		}
+		if( ! empty( $data ) ) { $this->unkownindex = $data; }
+	}
+
+	public function setVerts( array $data )
+	{
+		if( ! empty( $data ) ) { $this->vertices = $data; }
 	}
 	
-	public function setPosXYZ( $data )
+	public function setTransformMatrix( array $data )
 	{
 		// validate
-		if( is_array($data) && ( count( $data ) == 3 ) )
+		if( count( $data ) !== 4 )
 		{
-			$this->posX = $data[0];
-			$this->posY = $data[1];
-			$this->posZ = $data[2];
+		  foreach( $data as $vector )
+      {
+        if( ! is_array( $vector ) || ( count( $vector ) !== 3 ) )
+        {
+          return; // fail
+        }
+      }
 		}
+    $this->txA = $data[0];
+    $this->txB = $data[1];
+    $this->txC = $data[2];
+    $this->txD = $data[3];
 	}
 
-	public function setSomeOtherShit( $data )
+	public function setSomeOtherShit( array $data )
 	{
 		// validate
-		if( is_array($data) && ( count( $data ) == 3 ) )
+		if( count( $data ) == 3 )
 		{
 			$this->mA = $data[0];
 			$this->mB = $data[1];
@@ -148,11 +213,32 @@ class HullInstance
 		}
 	}
 
-	public function setUID( $UID )
+	public function setUID( string $UID )
 	{
-		// print "$UID"
 		if( ! empty( $UID ) && ( preg_match( '/[a-fA-F0-9]{32}/', $UID ) ) )
 		{ $this->uid = $UID; }
 	}
+
+	public function setHullInstanceId( int $HullInstanceId )
+	{
+		if( ! empty( $HullInstanceId ) )
+		{ $this->hullinstanceid = $HullInstanceId; }
+	}
+
+	public function setNextInstanceOffset( int $Offset )
+	{
+		if( ! empty( $Offset ) )
+		{ $this->nextinstanceoffset = $Offset; }
+	}
+
+	public function getUid()
+  {
+    return $this->uid;
+  }
+
+  public function getNextInstanceOffset()
+  {
+    return $this->nextinstanceoffset;
+  }
 
 }

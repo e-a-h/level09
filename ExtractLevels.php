@@ -1,148 +1,136 @@
 <?php
 require_once 'Helper.php';
+require_once 'LevelProcessor.php';
 
-// state variables
-$directory = '';
-$hash = '';
-$class = '';
-$instance = '';
-$counter = 0;
-Helper::helpMe( array( Helper::HelpMultiLevel ) );
-
-/**
- * Loop through each level's DecorationMeshInstances to process, and manage state between files
- */
-function loopThroughLevels()
+class ExtractLevels extends LevelProcessor
 {
-	global $directory, $counter;
+	// state variables
+	private $directory;
+	private $hash;
+	private $class;
+	private $instance;
+	private $counter;
+	private $ReadFile;
+	private $line;
 
-	$levels = Helper::filterLevels();
-	foreach( $levels as $level )
+	// List of options available to script wizard/cli
+	public static $ConfigOptions = array(
+		Helper::HelpMultiLevel,
+	);
+
+	public function __construct( InvocationOptions $Options )
 	{
-		$counter = 0;
-		$directory = "Level_$level";
-		handleFile();
+		parent::__construct( $Options );
 	}
-}
 
-/**
- * Open the level's DecorationMeshInstances file and process it
- */
-function handleFile()
-{
-	global $directory;
-	$readfile = fopen("$directory/DecorationMeshInstances.lua.bin", "r");
-
-	if( $readfile )
-	{ processFile( $readfile ); }
-
-	fclose( $readfile );
-}
-
-/**
- * Read the file and extract instances
- *
- * @param $readfile
- */
-function processFile( $readfile )
-{
-	//throw away the first line
-	$line = fread( $readfile, 16 );
-
-	while( ! feof( $readfile ) )
+	public function handleLevel( string $Level )
 	{
-		$line = bin2hex( fread( $readfile, 16 ) );
-		extractInstance( $line );
+		parent::handleLevel( $Level );
+		$this->directory = "Level_$this->level";
+		$this->loadLevel();
 	}
+
+	/**
+	 * Open the level's DecorationMeshInstances file and process it
+	 */
+  private function loadLevel()
+	{
+		$SourceFileName = "$this->directory/DecorationMeshInstances.lua.bin";
+		if( $this->ReadFile = fopen( $SourceFileName, "r" ) )
+		{ $this->processFile(); }
+		fclose( $this->ReadFile );
+	}
+
+	/**
+	 * Read the file and extract instances
+	 */
+  private function processFile()
+	{
+		//throw away the first line
+		$this->line = fread( $this->ReadFile, 16 );
+
+		while( ! feof( $this->ReadFile) )
+		{
+			$this->line = bin2hex( fread( $this->ReadFile, 16 ) );
+			$this->extractInstance();
+		}
+	}
+
+	/**
+	 * Save the line to the global instance. Also saves the hash and class for later use.
+	 */
+  private function extractInstance()
+	{
+		$this->extractHash();
+		$this->extractClass();
+		$this->instance .= $this->line;
+
+		//we're at the end of the block
+		if( ( ( $this->counter + 1 ) % 132 ) == 0 )
+		{
+			// Write the file
+			$this->writeFile();
+			// Reset for the next instance
+			$this->counter = 0;
+			$this->counter = 0;
+			$this->hash = '';
+			$this->class = '';
+			$this->instance = '';
+		}
+		else
+		{
+			$this->counter++;
+		}
+	}
+
+	/**
+	 * Extract the hash from the DecorationMeshInstance
+	 */
+  private function extractHash()
+	{
+		if( ( $this->counter == 7 ) || ( $this->counter == 8 ) )
+		{ $this->hash .= $this->line; }
+	}
+
+	/**
+	 * Extract the class name from the DecorationMeshInstance
+	 */
+  private function extractClass()
+	{
+		if( ( $this->counter == 11 ) || ( $this->counter == 12 ) )
+		{ $this->class .= $this->line; }
+	}
+
+	/**
+	 * Write the instance to a file
+	 */
+  private function writeFile()
+	{
+		$this->instance = hex2bin( $this->instance );
+		$this->class = Helper::hex2str( $this->class );
+		$this->hash = Helper::hex2str( $this->hash );
+		$path = $this->prepareOutput();
+
+		echo "Extracting $this->directory/$this->class/$this->hash\n";
+		file_put_contents( $path, $this->instance );
+	}
+
+	/**
+	 * Prepare the output file path, and return it
+	 * We also
+	 * @return string
+	 */
+  private function prepareOutput()
+	{
+		$classSubdir = "$this->directory/DecorationMeshInstances/$this->class";
+		if( $basepath = Helper::validateDirectory( $classSubdir ) )
+		{
+			return "$basepath/$this->hash";
+		}
+
+		echo "Failed to construct path from $this->directory";
+		exit();
+	}
+
+
 }
-
-/**
- * Save the line to the global instance. Also saves the hash and class for later use.
- *
- * @param $line
- * @return int
- */
-function extractInstance( $line )
-{
-	global $counter, $instance;
-
-	extractHash( $line );
-	extractClass( $line );
-	$instance .= $line;
-
-	//we're at the end of the block
-	if( ( ( $counter + 1 ) % 132 ) == 0 )
-	{ writeFile(); }
-
-	$counter++;
-}
-
-/**
- * Extract the hash from the DecorationMeshInstance
- *
- * @param $line
- */
-function extractHash( $line )
-{
-	global $counter, $hash;
-
-	if( ( $counter == 7 ) || ( $counter == 8 ) )
-	{ $hash .= $line; }
-}
-
-/**
- * Extract the class name from the DecorationMeshInstance
- *
- * @param $line
- */
-function extractClass( $line )
-{
-	global $counter, $class;
-
-	if( ( $counter == 11 ) || ( $counter == 12 ) )
-	{ $class .= $line; }
-}
-
-/**
- * Write the instance to a file
- */
-function writeFile()
-{
-	global $directory, $hash, $class, $instance;
-
-	$instance = hex2bin( $instance );
-	$class = Helper::hex2str( $class );
-	$hash = Helper::hex2str( $hash );
-	$path = prepareOutput();
-
-	echo "Extracting $directory/$class/$hash\n";
-	file_put_contents( $path, $instance );
-	resetState();
-}
-
-/**
- * Prepare the output file path, and return it
- * We also
- * @return string
- */
-function prepareOutput()
-{
-	global $hash, $class, $directory;
-
-	$classSubdir = "$directory/DecorationMeshInstances/$class";
-	if( $basepath = Helper::validateDirectory( $classSubdir ) )
-	{ return "$basepath/$hash"; }
-
-	echo "Failed to construct path from $directory";
-	exit();
-}
-
-function resetState()
-{
-	global $hash, $class, $instance, $counter;
-
-	$hash = $class = $instance = '';
-	$counter = -1;
-}
-
-loopThroughLevels();
