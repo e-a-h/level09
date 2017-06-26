@@ -17,7 +17,7 @@ Setup and run scripts:
 1. launch.php script should be symlinked into your "Scripts" directory in the unpacked game:
 
 ```
-ln -s /cygdrive/d/path/to/git/level09/launch.php /cygrdive/d/path/to/Journey/Scripts/lanuch
+ln -s /cygdrive/d/path/to/git/level09/launch.php /cygrdive/d/path/to/Journey/Scripts/launch
 ```
 
 Then from within the "Scripts" directory, use launch like this:
