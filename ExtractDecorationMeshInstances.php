@@ -4,7 +4,7 @@ require_once 'LevelProcessor.php';
 require_once 'dbHandler.php';
 require_once 'InvocationOptions.php';
 
-class ExtractJson extends LevelProcessor
+class ExtractDecorationMeshInstances extends LevelProcessor
 {
 
 	/*      state variables     */

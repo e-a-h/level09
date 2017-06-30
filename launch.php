@@ -2,10 +2,9 @@
 require_once "Helper.php";
 
 $scripts = array(
-  'ExtractLevels',
-	'ExtractJson',
-	'PlotPositions',
+	'ExtractDecorationMeshInstances',
 	'RebuildDecorationMeshInstances',
+	'PlotPositions',
 	'ExtractHulls',
 );
 $message = "Pick a script to run";

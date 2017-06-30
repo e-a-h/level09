@@ -18,12 +18,12 @@ class LevelProcessor implements Scriptable
 	}
 
 	public function run()
-  {
-    $this->processLevels();
-  }
+	{
+		$this->processLevels();
+	}
 
 	public function processLevels()
-  {
+	{
 		foreach( $this->Invocation->getLevels() as $Level )
 		{ $this->handleLevel( $Level ); }
 	}

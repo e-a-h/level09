@@ -78,7 +78,7 @@ class PlotPositions extends LevelProcessor
 		parent::handleLevel( $Level );
 		print "Level is now $this->level\n";
 
-		$this->resetState( $Level );
+		$this->resetState();
 		$this->prepareOutputFile();
 		$this->processLevel();
 		$this->addCompass();
@@ -91,9 +91,8 @@ class PlotPositions extends LevelProcessor
 	/**
 	 * Initiate for this level
 	 */
-	private function resetState( string $Level )
+	private function resetState()
 	{
-		$this->level = $Level;
 		$this->color = 0;
 		$this->minx = 9999;
 		$this->miny = 9999;
@@ -275,7 +274,7 @@ class PlotPositions extends LevelProcessor
 		{ $this->maxz = $z; }
 
 		if( $x < $this->minx )
-		{ $this->minx = (float) $x; }
+		{ $this->minx = $x; }
 
 		if( $y < $this->miny )
 		{ $this->miny = $y; }
