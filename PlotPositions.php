@@ -4,30 +4,52 @@ require_once 'LevelProcessor.php';
 require_once 'dbHandler.php';
 require_once 'InvocationOptions.php';
 
+
+/**
+ * After running this script, you can plot in gnuplot using:
+ * gnuplot> set xlabel "x axis"; set ylabel "y axis"; set zlabel "z axis"; set view equal xyz
+ * gnuplot> splot 'Level_Barrens/meshinstance-positions.txt' u 1:2:3:4:5 w labels tc palette offset 0,-1 point palette
+ */
 class PlotPositions extends LevelProcessor
 {
 	const OutFileBaseName = "meshinstance";
 
-	private $directory;
-	private $InstanceClass;
-	private $WriteFile;
-	private $ReadFile;
+	/** CONFIG OPTIONS **/
 
-  private $minx = 9999;
-  private $miny = 9999;
-  private $minz = 9999;
-  private $maxx = -9999;
-  private $maxy = -9999;
-  private $maxz = -9999;
-
-	// color of plot point (int), line count
+	// color of plot point (int)
 	private $color = 0;
-	private $counter = 0;
 
-	// what class names do you want?
-	// uses preg_match, so you can get partial matches
-	private $search_keys = array( '.*' );
+	// what class names do you want? uses preg_match, so you can get partial matches
 	// $search_keys = array('Rock', 'Flag', 'Tapestry');
+	private $search_keys = array( '.*' );
+
+	// define a color index for the class plot. uses preg_match, so you can get partial matches
+	// if the array is empty, then we will increment for each plot point
+	private $colorKeys = array(
+	  // 'FlagLg'                  => 0,
+	  // 'FlagMesh'                => 1,
+	  // 'P_MeshTapestry'          => 2,
+	  // 'P_Tapestry2'             => 3,
+	  // 'P_BarrensRiverRock'      => 4,
+	  // 'P_BarrensTunnelRockWall' => 5,
+	  // 'P_M6Rock'                => 6,
+	  // 'P_MountainRockB'         => 7,
+	  // 'P_RockBackWall'          => 8,
+	  // 'RockBed'                 => 9,
+	);
+
+	/** END CONFIG OPTIOINS **/
+
+	private $directory;
+	private $Label;
+	private $WriteFile;
+
+	private $minx = 9999;
+	private $miny = 9999;
+	private $minz = 9999;
+	private $maxx = -9999;
+	private $maxy = -9999;
+	private $maxz = -9999;
 
 	// List of options available to script wizard/cli
 	public static $ConfigOptions = array(
@@ -56,7 +78,21 @@ class PlotPositions extends LevelProcessor
 		parent::handleLevel( $Level );
 		print "Level is now $this->level\n";
 
-		// Initiate for this level
+		$this->resetState( $Level );
+		$this->prepareOutputFile();
+		$this->processLevel();
+		$this->addCompass();
+
+		fclose( $this->WriteFile );
+	}
+
+	// private methods
+
+	/**
+	 * Initiate for this level
+	 */
+	private function resetState( string $Level )
+	{
 		$this->level = $Level;
 		$this->color = 0;
 		$this->minx = 9999;
@@ -65,72 +101,38 @@ class PlotPositions extends LevelProcessor
 		$this->maxx = -9999;
 		$this->maxy = -9999;
 		$this->maxz = -9999;
+	}
 
+	/**
+	 * Generate the output file name, and open it for writing
+	 */
+	private function prepareOutputFile()
+	{
+		$extension = $this->Invocation->isMelExport() ? 'mel' : 'txt';
+		$filename = "Level_$this->level/" . self::OutFileBaseName . "-positions.$extension";
+		$this->WriteFile = fopen( $filename, 'w' );
+
+		if( ! $this->WriteFile) {
+			print "Could not open output file $filename \n";
+			exit;
+		}
+	}
+
+	/**
+	 * Iterate through all decoration mesh instances subdirectories and process them
+	 * 
+	 * @todo can we avoid nested foreach here?
+	 */
+	private function processLevel()
+	{
 		$classes = $this->getDirectoryContents( "Level_$this->level/DecorationMeshInstances" );
-		$Ext = $this->Invocation->isMelExport() ? 'mel' : 'txt';
-		$this->WriteFile = fopen(
-			"Level_$this->level/" . self::OutFileBaseName . "-positions.$Ext",
-			"w"
-		);
 
-		foreach( $this->search_keys as $key )
-		{
-			foreach( $classes as $class )
-			{
-				$this->InstanceClass = $class;
+		foreach( $this->search_keys as $key ) {
+			foreach( $classes as $class ) {
 				$this->processClass( $key, $class );
 			}
 		}
-
-		// add north/south/east/west labels using point cloud bounds
-		$avx = ( $this->minx + $this->maxx ) / 2;
-		$avy = ( $this->miny + $this->maxy ) / 2;
-
-		$this->InstanceClass = "north";
-		$this->writePosition( $this->maxx, $avy, 0, "north", 0 );
-		$this->InstanceClass = "south";
-		$this->writePosition( $this->minx, $avy, 0, "south", 0 );
-		$this->InstanceClass = "east";
-		$this->writePosition( $avx, $this->miny, 0, "east", 0 );
-		$this->InstanceClass = "west";
-		$this->writePosition( $avx, $this->maxy, 0, "west", 0 );
-
-		fclose( $this->WriteFile );
-		/*
-		After this, you can plot in gnuplot using:
-		gnuplot> set xlabel "x axis"; set ylabel "y axis"; set zlabel "z axis"; set view equal xyz
-		gnuplot> splot 'Level_Barrens/rock-flag-positions.txt' u 1:2:3:4:5 w labels tc palette offset 0,-1 point palette
-	 */
 	}
-
-	// output a line to the output file
-
-	/**
-	 * @param $x
-	 * @param $y
-	 * @param $z
-	 * @param string $label
-	 * @param int $index
-	 */
-	private function writePosition( $x, $y, $z, string $label = "", int $index = 0 )
-	{
-		if( $this->Invocation->isMelExport() )
-		{
-			fwrite( $this->WriteFile, "spaceLocator -p $x $y $z" );
-			if( ! empty( $label ) )
-			{
-				fwrite( $this->WriteFile, " -n \"$label\";" );
-			}
-			fwrite( $this->WriteFile, "\r\n" );
-			print "Added locator $this->InstanceClass to script\n";
-		}
-		else
-		{
-			fwrite( $this->WriteFile, "$x $y $z $label $index\r\n" );
-			print "Added $this->InstanceClass to output\n";
-		}
-	}
-
 
 	/**
 	 * This skips the first 2 lines of output (current & parent directory)
@@ -145,10 +147,10 @@ class PlotPositions extends LevelProcessor
 		array_shift( $contents ); // skip .
 		array_shift( $contents ); // skip ..
 
-		if( empty( $contents ) )
-		{
+		if( empty( $contents ) ) {
 			exit( "No mesh instances found in $directory.\nTry ExtractLevels script first." );
 		}
+
 		return $contents;
 	}
 
@@ -160,14 +162,44 @@ class PlotPositions extends LevelProcessor
 	 */
 	private function processClass( string $key, string $class )
 	{
-		print "Class: $class\n";
-		if( preg_match( "/$key/", $class ) )
-		{
+		if( ! stristr($class, '.') && preg_match( "/$key/", $class ) ) {
+			print "Class: $class\n";
+
+			$this->Label = $class;
 			$this->directory = "Level_$this->level/DecorationMeshInstances/$class";
-			$this->color = ++$this->color;
-			// $this->setColor($class);
+
+			// determine the color before we format the label
+			$this->setColor();
+			$this->formatLabel();
 			$this->processFiles();
 		}
+	}
+	
+	/**
+	 * Set the color for this plot point based on its label
+	 */
+	private function setColor()
+	{
+		if( empty( $this->colorKeys ) ) {
+			return $this->color++;
+		}
+
+		$this->color = 0;
+		foreach( $colorKeys as $key => $value ) {
+			if( preg_match("/$key/", $this->Label ) ) {
+				$this->color = $value;
+			}
+		}
+	}
+
+	/**
+	 * Remove extraneous characters from the label, and fix formatting for Maya
+	 */
+	private function formatLabel()
+	{
+		$this->Label = preg_replace( '/P_/', '', $this->Label );
+		$this->Label = preg_replace( '/C_/', '', $this->Label );
+		$this->Label = preg_replace( '/_/', '-', $this->Label );
 	}
 
 	/**
@@ -177,76 +209,55 @@ class PlotPositions extends LevelProcessor
 	{
 		$files = $this->getDirectoryContents( $this->directory );
 
-		foreach( $files as $filename )
-		{
-			// Do not operate on files with dot "." in their name, e.g. "something.json"
-			// Assumption is that decorationmeshinstance file exists and has no extension.
-			if( ! stristr( $filename, '.' ) )
-			{ $this->handleFile( $filename ); }
+		foreach( $files as $filename ) {
+			if( stristr( $filename, '.json' ) ) {
+				$this->handleFile( "$this->directory/$filename" );
+			}
 		}
 	}
 
 	/**
-	 * Open the file for reading and reset line counter
+	 * Make sure we can open the input file
 	 *
-	 * @param $filename
+	 * @param $filepath
 	 */
-	private function handleFile( string $filename )
+	private function handleFile( string $filepath )
 	{
-		$this->counter = 0;
-		$this->ReadFile = fopen( "$this->directory/$filename", "rb" );
-
-		// print "$directory/$file\n";
-		if( $this->ReadFile && $this->WriteFile )
-		{ $this->processFile(); }
-		else
-		{ print "Something went wrong...\n"; }
-
-		fclose( $this->ReadFile );
+		if( file_exists( "$filepath" ) ) {
+			$this->processFile( $filepath );
+		} else {
+			print "Could not the input file $filepath, skipping.\n";
+		}
 	}
 
 	/**
 	 * Read each line of the file, translate to hex, and extract position
 	 */
-	private function processFile()
+	private function processFile( string $filepath )
 	{
-		while( ! feof( $this->ReadFile ) )
-		{
-			$binline = fread( $this->ReadFile, 16 );
-			$this->extractPosition( $binline );
-			$this->counter++;
-		}
+		$instance = json_decode( file_get_contents( $filepath ) );
+
+        if( ! isset( $instance->position ) ) {
+            return;
+        }
+
+        list( $x, $y, $z ) = $this->getCoordinates($instance->position);
+		$this->setBounds( $x, $y, $z );
+		$this->writePosition( $x, $y, $z, $this->color );
 	}
 
-	/**
-	 * Extract the position from the hex provided, and write to output file
-	 *
-	 * @param $line
-	 *
-	 */
-	private function extractPosition( $line )
-	{
-		if( $this->counter == 4 )
-		{
-			// The order coordinates appear in the hex is y,z,x
-			// Format to floats
-			$y = Helper::unpackFloat( substr( $line, 0, 4 ) );
-			$z = Helper::unpackFloat( substr( $line, 4, 4 ) );
-			$x = Helper::unpackFloat( substr( $line, 8, 4 ) );
+    /**
+     * Get XYZ coordinates from instance object, and return them as floats
+     */
+    private function getCoordinates( string $position )
+    {
+        list( $x, $y, $z ) = explode(' ', $position);
 
-			$this->setBounds( $x, $y, $z );
-
-			// output the coords and color index;
-			$Label = preg_replace( '/P_/', '', $this->InstanceClass );
-			$Label = preg_replace( '/C_/', '', $Label );
-			$Label = preg_replace( '/_/', '-', $Label );
-
-			$this->writePosition( $x, $y, $z, $Label, $this->color );
-		}
-	}
+        return array( (float) $x, (float) $y, (float) $z );
+    }
 
 	/**
-	 * push min and max xyz bounds accoring to input. Bounds are cumulative
+	 * Push min and max xyz bounds according to input. Bounds are cumulative
 	 *
 	 * @param $x
 	 * @param $y
@@ -264,7 +275,7 @@ class PlotPositions extends LevelProcessor
 		{ $this->maxz = $z; }
 
 		if( $x < $this->minx )
-		{ $this->minx = $x; }
+		{ $this->minx = (float) $x; }
 
 		if( $y < $this->miny )
 		{ $this->miny = $y; }
@@ -273,4 +284,61 @@ class PlotPositions extends LevelProcessor
 		{ $this->minz = $z; }
 	}
 
+	/**
+	 * Output a line to the output file
+	 *
+	 * @param $x
+	 * @param $y
+	 * @param $z
+	 * @param int $index
+	 */
+	private function writePosition( $x, $y, $z, int $color = 0 )
+	{
+		if( $this->Invocation->isMelExport() ) {
+			$this->writeMelPosition( $x, $y, $z );
+		} else {
+			$this->writeGnuplotPosition( $x, $y, $z, $color );
+		}
+	}
+
+	/**
+	 * Write a Mel-formatted position to the output file
+	 */
+	private function writeMelPosition( $x, $y, $z )
+	{
+		fwrite( $this->WriteFile, "spaceLocator -p $x $y $z" );
+		fwrite( $this->WriteFile, " -n \"$this->Label\";" );
+		fwrite( $this->WriteFile, "\r\n" );
+		print "Added locator $this->Label to script\n";
+	}
+
+	/**
+	 * Write a Gnuplot-formatted position to the output file
+	 */
+	private function writeGnuplotPosition( $x, $y, $z, $color )
+	{
+		fwrite( $this->WriteFile, "$x $y $z $this->Label $color\r\n" );
+		print "Added $this->Label to output\n";
+	}
+
+	/**
+	 * Add north, south, east and west at the boundaries of the objects being plotted
+	 */
+	private function addCompass()
+	{
+		$avx = ( $this->minx + $this->maxx ) / 2;
+		$avy = ( $this->miny + $this->maxy ) / 2;
+
+		$this->Label = "north";
+		$this->writePosition( $this->maxx, $avy, 0, 0 );
+
+		$this->Label = "south";
+		$this->writePosition( $this->minx, $avy, 0, 0 );
+
+		$this->Label = "east";
+		$this->writePosition( $avx, $this->miny, 0, 0 );
+
+		$this->Label = "west";
+		$this->writePosition( $avx, $this->maxy, 0, 0 );
+	}
 }
