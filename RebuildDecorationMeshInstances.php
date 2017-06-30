@@ -176,9 +176,9 @@ class RebuildDecorationMeshInstances extends LevelProcessor
 	private function rebuildInstance( $instance )
 	{
 		$instanceBin = hex2bin( $instance->header . Helper::pad( 6 ) );
-		$instanceBin .= Helper::floatTuple2Bin( $instance->meta1 );
-		$instanceBin .= Helper::floatTuple2Bin( $instance->meta2 );
-		$instanceBin .= Helper::floatTuple2Bin( $instance->meta3 );
+		$instanceBin .= Helper::floatTuple2Bin( $instance->normal );
+		$instanceBin .= Helper::floatTuple2Bin( $instance->tangent );
+		$instanceBin .= Helper::floatTuple2Bin( $instance->bitangent );
 		$instanceBin .= Helper::floatTuple2Bin( $instance->position, false );
 		$instanceBin .= hex2bin( "3f800000" );
 		$instanceBin .= Helper::floatTuple2Bin( $instance->data1 );

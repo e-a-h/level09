@@ -5,9 +5,9 @@
 # http://www.sequelpro.com/
 # https://github.com/sequelpro/sequelpro
 #
-# Host: localhost (MySQL 5.6.34)
+# Host: localhost (MySQL 5.6.35)
 # Database: journey_meshes
-# Generation Time: 2017-02-18 22:12:18 +0000
+# Generation Time: 2017-06-30 05:09:38 +0000
 # ************************************************************
 
 
@@ -18,6 +18,40 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+
+# Dump of table levels
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `levels`;
+
+CREATE TABLE `levels` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `level` varchar(32) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+LOCK TABLES `levels` WRITE;
+/*!40000 ALTER TABLE `levels` DISABLE KEYS */;
+
+INSERT INTO `levels` (`id`, `level`)
+VALUES
+  (1,'Barrens'),
+  (2,'Bryan'),
+  (3,'Canyon'),
+  (4,'Cave'),
+  (5,'Chris'),
+  (6,'Credits'),
+  (7,'Desert'),
+  (8,'Graveyard'),
+  (9,'Matt'),
+  (10,'Mountain'),
+  (11,'Ruins'),
+  (12,'Summit');
+
+/*!40000 ALTER TABLE `levels` ENABLE KEYS */;
+UNLOCK TABLES;
+
 
 # Dump of table mesh_instance_properties
 # ------------------------------------------------------------
@@ -53,12 +87,18 @@ CREATE TABLE `mesh_instances` (
   `hash` varchar(32) DEFAULT NULL,
   `level_id` int(11) unsigned NOT NULL,
   `header` varchar(8) DEFAULT NULL,
-  `meta1` text,
-  `meta2` text,
-  `meta3` text,
-  `position_x` text,
-  `position_y` text,
-  `position_z` text,
+  `normal_x` float DEFAULT NULL,
+  `normal_y` float DEFAULT NULL,
+  `normal_z` float DEFAULT NULL,
+  `tangent_x` float DEFAULT NULL,
+  `tangent_y` float DEFAULT NULL,
+  `tangent_z` float DEFAULT NULL,
+  `bitangent_x` float DEFAULT NULL,
+  `bitangent_y` float DEFAULT NULL,
+  `bitangent_z` float DEFAULT NULL,
+  `position_x` float DEFAULT NULL,
+  `position_y` float DEFAULT NULL,
+  `position_z` float DEFAULT NULL,
   `data1` text,
   `data2` text,
   `flag` varchar(64) DEFAULT NULL,

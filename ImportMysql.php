@@ -128,10 +128,10 @@ function importInstance( $instance )
 {
 	global $db, $levelIndex, $instance_buffer, $property_buffer;
 
-	$position   = explode( ' ', $instance->position );
-	$position_x = $position[0];
-	$position_y = $position[1];
-	$position_z = $position[2];
+	list( $normal_x, $normal_y, $normal_z )   		 = explode( ' ', $instance->normal );
+	list( $tangent_x, $tangent_y, $tangent_z )   	 = explode( ' ', $instance->tangent );
+	list( $bitangent_x, $bitangent_y, $bitangent_z ) = explode( ' ', $instance->bitangent );
+	list( $position_x, $position_y, $position_z )    = explode( ' ', $instance->position );
 
 	// include quotes where appropriate for sql statement
 	$values = array(
@@ -139,9 +139,15 @@ function importInstance( $instance )
 		"'$instance->hash'",
 		"'$levelIndex'",
 		"'$instance->header'",
-		"'$instance->meta1'",
-		"'$instance->meta2'",
-		"'$instance->meta3'",
+		"$normal_x",
+		"$normal_y",
+		"$normal_z",
+		"$tangent_x",
+		"$tangent_y",
+		"$tangent_z",
+		"$bitangent_x",
+		"$bitangent_y",
+		"$bitangent_z",
 		"$position_x",
 		"$position_y",
 		"$position_z",
@@ -163,7 +169,8 @@ function insertInstances()
 
 	$values = implode( ', ', $instance_buffer );
 	$sql = "INSERT INTO mesh_instances (class, hash, level_id, header, "
-		. "meta1, meta2, meta3, position_x, position_y, position_z, "
+		. "normal_x, normal_y, normal_z, tangent_x, tangent_y, tangent_z, "
+		. "bitangent_x, bitangent_y, bitangent_z, position_x, position_y, position_z, "
 		. "data1, data2, flag, render, property_count) "
 		. "VALUES $values;";
 

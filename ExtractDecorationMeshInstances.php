@@ -105,13 +105,13 @@ class ExtractDecorationMeshInstances extends LevelProcessor
 				$this->instance['header'] = substr( $line, 0, 8 );
 				break;
 			case 1:
-				$this->instance['meta1'] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
+				$this->instance['normal'] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
 				break;
 			case 2:
-				$this->instance['meta2'] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
+				$this->instance['tangent'] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
 				break;
 			case 3:
-				$this->instance['meta3'] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
+				$this->instance['bitangent'] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
 				break;
 			case 4:
 				$this->instance['position'] = Helper::unpackStringOfFloats( substr( $line, 0, 12 ) );
