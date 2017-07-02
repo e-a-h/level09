@@ -1,6 +1,25 @@
 <?php
 require_once "InvocationOptions.php";
 
+class HexifyFloats
+{
+	public static function invokeViaWizard()
+	{
+		return new self();
+	}
+
+	public function run()
+	{
+		print "Paste in a string of floats. I will output as Hex-formated binary. Floats should be comma-separated string. Spaces are optional.\n> ";
+		$line = fgets( STDIN );
+		$output = Helper::floatArrayToHex( array( 'f' => $line ) );
+
+		print "\nHere you go:\n\n";
+		print implode( '', $output );
+		print "\n\n";
+	}
+}
+
 /// \brief Helper class for reverse-engineering binary data
 class Helper
 {
@@ -360,7 +379,7 @@ EOT;
 		$output = array();
 		foreach( $floats as $val )
 		{
-			bin2hex( self::float2bin( $val ) );
+			$output[] = bin2hex( self::float2bin( $val ) );
 		}
 
 		// -a is for debug
@@ -373,10 +392,6 @@ EOT;
 			return $output;
 		}
 
-		print "\n";
-		print implode( '', $output );
-		print "\n";
-		print "\n";
 		return $output;
 	}
 

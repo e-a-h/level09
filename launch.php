@@ -6,16 +6,22 @@ $scripts = array(
 	'RebuildDecorationMeshInstances',
 	'PlotPositions',
 	'ExtractHulls',
+	'HexifyFloats'
 );
 $message = "Pick a script to run";
-
 $selectedscripts = Helper::cliPrompt( $message, $scripts, "q" );
 
 if( count( $selectedscripts ) !== 1 )
-{ exit( "Select only one script\n" ); }
+{
+	exit( "Select only one script\n" );
+}
 
-$classfile = $selectedscripts[0] . ".php";
 $class = $selectedscripts[0];
-require_once ( $classfile );
+if( ! class_exists( $class ) )
+{
+	$classfile = "$class.php";
+	require_once( $classfile );
+}
+
 $action = $class::invokeViaWizard();
 $action->run();
