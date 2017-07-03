@@ -18,6 +18,12 @@ class HexifyFloats
 		print implode( '', $output );
 		print "\n\n";
 	}
+
+	public static function invokeViaCLI( string $floats )
+	{
+		$output = Helper::floatArrayToHex( array( 'f' => $floats ) );
+		print implode( '', $output );
+	}
 }
 
 /// \brief Helper class for reverse-engineering binary data

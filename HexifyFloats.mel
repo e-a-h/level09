@@ -1,0 +1,17 @@
+global proc string HexifyFloats( string $line, int $fulloutput ){
+  $command = "require_once \'Helper.php\';";
+  $command += "HexifyFloats::invokeViaCLI( \'" + $line + "\' );";
+  $systemcommand = "D:/Apps/php-7.1/php -r \""+$command+"\";";
+  if( $fulloutput )
+  {
+    print $systemcommand;
+    print "\n";
+  }
+  $out = system($systemcommand);
+  if( $fulloutput )
+  {
+    print $out;
+    print "\n";
+  }
+  return $out;
+}
