@@ -18,21 +18,22 @@
 EXTRACTDIR=$1
 MODIFIED=$2
 STARTDIR=`pwd`
-CYGHOME=`cygpath -w -p "$HOME"`
-SCRIPTPATH=$CYGHOME\\bin\\JourneyTerrain.bms
+CYGHOME=`cygpath -m -p "$HOME"`
+SCRIPTPATH="$CYGHOME/bin/JourneyTerrain.bms"
+BMS="$CYGHOME/bin/quickbms.exe"
 
 echo ""
 echo "Starting from $STARTDIR"
-echo "Extracting to $EXTRACTDIR/..."
-echo "Backing up to $MODIFIED/..."
 echo ""
 
 if [ "$1" != "-r" ]; then
 
+  echo "Extracting to $EXTRACTDIR/..."
+  echo "Backing up to $MODIFIED/..."
   # Extract
   gunzip -k TerrainData.bin.gz
   mkdir $EXTRACTDIR
-  quickbms.exe $SCRIPTPATH TerrainData.bin $EXTRACTDIR
+  $BMS $SCRIPTPATH TerrainData.bin $EXTRACTDIR
 
   cd $EXTRACTDIR
   convert -depth 8 -size 256x512 gray:BlockMapA.raw BlockMapA.tif
@@ -49,6 +50,7 @@ if [ "$1" != "-r" ]; then
 
   exit 1
 else
+  echo "Restoring from $MODIFIED/..."
   # Restore
   cd $MODIFIED
   #TODO: check for existence of each component and skip if not
@@ -68,7 +70,7 @@ else
 
   # TODO: check for existence of TerrainData.bin file and warn/exit if not
   cd $STARTDIR
-  quickbms.exe -w -r $SCRIPTPATH TerrainData.bin $MODIFIED
+  $BMS -w -r $SCRIPTPATH TerrainData.bin $MODIFIED
   gzip -k TerrainData.bin
 
   exit 1
