@@ -197,7 +197,6 @@ RunReimport ()
     echo "${warn} WARNING! ${normal} No files have been restored." >&2
   else
     cd $StartDir
-    echo "Restoring from $ExtractDir" >&2
     printf "\n${c4}> $BMS_Exe -w -r $ScriptPath TerrainData.bin $ExtractDir${normal} \n" >&2
 
     $BMS_Exe -w -r $ScriptPath TerrainData.bin $ExtractDir
