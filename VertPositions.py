@@ -1,6 +1,14 @@
-# Put this file in your maya scripts directory, then paste the following
-# into the "Python" command line (lower-right, if it says MEL, click it
-# to change to Python mode):
+# Requirements:
+
+# Git repo directory must be in your php.ini "include_path" directive.
+# my include_path looks like this:
+# include_path = ".:/cygdrive/d/Journey/Mod/git/level09"
+
+# Path to PHP executable must be in HexifyFloats.mel $php_exe variable (line 2)
+
+# Put this file and HexifyFloats.mel in your maya scripts directory,
+# then paste the following into the "Python" command line (lower-right,
+# if it says MEL, click it to change to Python mode):
 
 # import VertPositions; reload(VertPositions); VertPositions.hexdumpshelfbutton();
 
@@ -48,7 +56,7 @@ def getVertPositions(  ):
 
 def hexdumpshelfbutton():
     command = "import VertPositions; reload(VertPositions); VertPositions.hexdump();"
-    shelfButton( rpt=1, i1="pythonFamily.png", l=command, ann="HEXY", p="Custom" );
+    shelfButton( rpt=1, stp="python", i1="pythonFamily.png", l="HEXY", ann="HEXY", c=command, p="Custom" );
 
 def hexdump( fulloutput=0 ):
     #get selection
