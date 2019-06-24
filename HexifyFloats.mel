@@ -1,5 +1,6 @@
 global proc string HexifyFloats( string $line, int $fulloutput ){
-    $php_exe = "D:/Apps/php-7.1/php";
+    $php_exe = "C:/cygwin64/bin/php.exe";
+	
     $command = "require_once \'Helper.php\';";
     $command += "HexifyFloats::invokeViaCLI( \'" + $line + "\' );";
     $systemcommand = $php_exe+" -r \""+$command+"\";";

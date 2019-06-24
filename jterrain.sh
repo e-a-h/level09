@@ -2,9 +2,8 @@
 
 #####################################
 #
-# This file, quickbms.exe, and JourneyTerrain.bms must all be copied to
+# This file and jterrain.pl must be copied or symlinked into
 # your ~/bin directory.
-# TODO: refactor to use PHP instead of quickbms for non-windows friends
 #
 # EXTRACT USAGE: jterrain.sh -x FolderNameToBackupInto
 # With the -x flag, specify a folder to copy the extracted data into.
@@ -27,6 +26,7 @@ BMS_Exe=~/bin/quickbms.exe
 SelfName=`basename "$0"`
 
 RunMode=0
+PcMode=0
 ExtractMode=1
 ReimportMode=2
 
@@ -44,6 +44,11 @@ c5=$(tput setab 5)
 c6=$(tput setab 6)
 blacktext=$(tput setaf 0)
 warn=$red$bold$bel
+
+if [ `basename "$0"` == "jterrainpc" ]; then
+  echo "${bold}!!${red}PC Mode${normal}!!"
+  PcMode=1
+fi
 
 ExportUsage="${bold}Export Usage:${normal} $SelfName -x ExtractDir"
 ImportUsage="${bold}Import Usage:${normal} $SelfName -r ModifiedFileDir"
@@ -72,39 +77,47 @@ ValidateDir ()
   # argument count is 1 AND
   # argument is not empty string AND
   # { argument is existing dirname OR mkdir succeeds }
+  # echo "${red}$1${normal}"
   if [ ! -z "$1" ] && { [ -d "$1" ] || mkdir "$1"; }; then
+	#echo ""
     ValidDir=`realpath "$1"`
+	# echo "${red}here it is${normal}"
   else
     # Don't do anything else if this fails
     echo "Could not validate directory from input \"$1\"" >&2
     exit 1
   fi
   # echo so caller can capture validated dirname
-  echo $(printf '%q' "$ValidDir" )
+  echo $(printf '%s' "$ValidDir" )
 }
 
 CleanupTempFiles ()
 {
   StartedIn=`pwd`
-  echo "Removing temp files..." >&2
-  if [ -f $StartDir/TerrainData.bin ]; then
-    rm $StartDir/TerrainData.bin
+  echo "${red}Removing temp files...${normal}" >&2
+  if [ -f "$StartDir/TerrainData.bin" -a $PcMode != 1 ]; then
+	echo "removing ungzipped terraindata..."
+    rm "$StartDir/TerrainData.bin"
   fi
   if [ -d "$ModDir" ]; then
     cd "$ModDir"
+    if [ -f HeightMap.raw ]; then
+	  echo "Remove raw map: HeightMap"
+      rm HeightMap.raw
+    fi
     if [ -f BlockMapA.raw ]; then
+	  echo "Remove raw map: BlockmapA"
       rm BlockMapA.raw
     fi
     if [ -f BlockMapB.raw ]; then
+	  echo "Remove raw map: BlockMapB"
       rm BlockMapB.raw
     fi
     if [ -f DustMap.raw ]; then
+	  echo "Remove raw map: DustMap"
       rm DustMap.raw
     fi
-    if [ -f HeightMap.raw ]; then
-      rm HeightMap.raw
-    fi
-    cd $StartedIn
+    cd "$StartedIn"
   fi
 }
 
@@ -119,10 +132,12 @@ RunExtract ()
   echo "Starting from $StartDir" >&2
   echo "Extracting to ${ExtractDir}" >&2
 
-  printf "\n${c4}> $BMS_Exe $ScriptPath TerrainData.bin $ExtractDir${normal} \n" >&2
-  $BMS_Exe $ScriptPath TerrainData.bin $ExtractDir >&2
-
   cd "$ExtractDir"
+
+  echo ""
+  echo "${red}Extract Raw Maps...${normal}"
+  printf "${c4}> jterrain.pl TerrainData.bin${normal}\n" >&2
+  ~/bin/jterrain.pl "$StartDir"/TerrainData.bin >&2
 
   if [ -e BlockMapA.tif ] ||
      [ -e BlockMapB.tif ] ||
@@ -133,22 +148,23 @@ RunExtract ()
 
     CleanupTempFiles
   else
-    convert -depth 8 -size 256x512 gray:BlockMapA.raw BlockMapA.tif
-    convert -depth 8 -size 256x512 gray:BlockMapB.raw BlockMapB.tif
-    convert -depth 8 -size 256x512 -define tiff:alpha=unspecified RGBA:DustMap.raw -type TrueColorMatte tif:DustMap.tif
-    convert -depth 16 -size 256x512+0 -endian MSB gray:HeightMap.raw HeightMap.tif
+    echo "${red}Convert to editable image formats...${normal}"
+    convert -verbose -depth 8 -size 256x512 gray:BlockMapA.raw BlockMapA.tif
+    convert -verbose -depth 8 -size 256x512 gray:BlockMapB.raw BlockMapB.tif
+    convert -verbose -depth 8 -size 256x512 -define tiff:alpha=unspecified RGBA:DustMap.raw -type TrueColorMatte tif:DustMap.tif
+    convert -verbose -depth 16 -size 256x512+0 -endian MSB gray:HeightMap.raw HeightMap.tif
 
     CleanupTempFiles
-
     cd "$StartDir"
+
     # Set backup location
     BackupDir=$( ValidateDir "$StartDir/BackupTerrainData_"`date +%Y%m%d_%s` )
-    echo "Backing up to $BackupDir" >&2
+    echo "${red}Backing up to:${normal} $BackupDir" >&2
 
-    cp $ExtractDir/* $BackupDir
+    cp "$ExtractDir"/* "$BackupDir"
     if [ -z "$(ls -A "$BackupDir")" ]; then
       # Remove backupdir if it's empty at this point
-      rmdir $BackupDir
+      rmdir "$BackupDir"
     fi
   fi
 
@@ -196,10 +212,10 @@ RunReimport ()
   if [ $MODCOUNT == 0 ]; then
     echo "${warn} WARNING! ${normal} No files have been restored." >&2
   else
-    cd $StartDir
+    cd "$StartDir"
     printf "\n${c4}> $BMS_Exe -w -r $ScriptPath TerrainData.bin $ExtractDir${normal} \n" >&2
 
-    $BMS_Exe -w -r $ScriptPath TerrainData.bin $ExtractDir
+    $BMS_Exe -w -r $ScriptPath TerrainData.bin "$ExtractDir"
     gzip -kf TerrainData.bin
   fi
   CleanupTempFiles
